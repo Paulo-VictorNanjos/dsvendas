@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "animate.css": "^4.1.1",
+    "dotenv": "^16.5.0",
+    "knex": "^3.1.0",
+    "pg": "^8.15.6",
+    "react-material-ui-carousel": "^3.4.2",
+    "recharts": "^2.15.3",
+    "sqlite3": "^5.1.7",
+    "sweetalert2": "^11.21.0"
+  }
+}

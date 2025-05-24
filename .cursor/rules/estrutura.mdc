@@ -1,0 +1,180 @@
+---
+description: estrutura plataforma
+globs: 
+alwaysApply: false
+---
+📌 Resumo Geral
+Desenvolver uma plataforma web moderna, utilizando React + TypeScript no frontend e Node.js + Express no backend, com um banco de dados próprio (PostgreSQL ou MySQL), realizando sincronização inteligente com o banco de dados de um sistema ERP já existente, conforme os arquivos .sql listados (clientes, orçamentos, pedidos, regras fiscais etc.).
+
+🔐 Autenticação
+Tela de login moderna (React) com autenticação via e-mail e senha (própria da plataforma).
+
+Após o login, o sistema reconhece o vendedor associado (pelo código ou e-mail relacionado no ERP).
+
+A associação entre conta da plataforma e vendedor ERP será feita por uma tabela de vinculação (ex: vendedores_web).
+
+📚 Módulos da Plataforma
+1. Consulta de Clientes
+Visualização dos clientes do ERP (somente leitura).
+
+Filtros por nome, CNPJ, cidade, estado.
+
+2. Orçamentos
+O vendedor cria um orçamento baseado nos produtos do ERP.
+
+Regras fiscais e regras por operação são aplicadas automaticamente.
+
+As operações disponíveis:
+
+Revenda de Mercadoria
+
+Bonificação
+
+Validação de sequência do número de orçamento via controle na plataforma.
+
+Ao concluir, o orçamento entra como pendente de sincronização.
+
+3. Pedidos de Venda
+O vendedor transforma um orçamento em pedido.
+
+Não pode editar o pedido após enviado.
+
+Pode visualizar o status atual via workflow:
+
+Aguardando aprovação
+
+Aprovado
+
+Em faturamento
+
+Faturado
+
+O pedido também é sincronizado com o ERP com controle de código sequencial e regras fiscais.
+
+4. Configurações de Operações
+Tela de administração onde o gestor pode:
+
+Editar regras fiscais por operação.
+
+Ajustar CFOP, ICMS, PIS/COFINS e bonificações.
+
+Tabela refletida nas tabelas do ERP para garantir conformidade.
+
+🔁 Sincronização com o ERP
+Banco da Web:
+Tabelas locais: clientes_web, orcamentos_web, pedidos_web, produtos_web, regras_fiscais_web, sync_logs, etc.
+
+Sincronização:
+Serviço agendado (cron job ou worker Node):
+
+Verifica itens pendentes de sincronização.
+
+Gera novo código sequencial conforme última entrada no ERP.
+
+Insere no banco do ERP e atualiza o status na plataforma (sincronizado, erro, pendente).
+
+Validações antes do envio:
+
+Código de cliente válido
+
+Regras fiscais aplicadas
+
+Produtos existentes
+
+🧠 Regras de Negócio (Back-end)
+Toda criação de orçamento e pedido deve:
+
+Ter vínculo com um cliente e um vendedor ERP.
+
+Validar o tipo de operação e aplicar regras fiscais.
+
+Ser registrada na tabela de controle (sync_logs) com:
+
+ID local
+
+Status
+
+Tentativas
+
+Data/hora da última tentativa
+
+Código sequencial de pedidos/orçamentos deve ser calculado com base no maior código atual do ERP + 1 (com travas de concorrência).
+
+🧱 Estrutura da API RESTful (Node.js + Express)
+txt
+Copiar
+Editar
+/auth
+  POST /login
+  POST /register (restrito a admins)
+
+/clientes
+  GET /        → lista de clientes (consulta)
+  GET /:id     → detalhes do cliente
+
+/orcamentos
+  GET /        → lista de orçamentos do usuário logado
+  POST /       → cria novo orçamento
+  GET /:id     → detalhes
+  PUT /:id     → editar antes do envio
+  POST /:id/enviar → envia para sincronização
+
+/pedidos
+  GET /        → pedidos do vendedor
+  GET /:id     → detalhes do pedido
+  POST /:id/sincronizar → envia ao ERP
+
+/regras
+  GET /operacoes          → tipos de operação
+  GET /fiscais/:op        → regras fiscais por operação
+  PUT /fiscais/:op        → editar regras
+
+/sync
+  GET /logs               → histórico de sincronização
+🗂️ Estrutura de Pastas (Backend)
+arduino
+Copiar
+Editar
+src/
+├── controllers/
+│   ├── authController.ts
+│   ├── orcamentoController.ts
+│   ├── pedidoController.ts
+├── models/
+│   ├── Cliente.ts
+│   ├── Orcamento.ts
+│   ├── Pedido.ts
+│   ├── RegraFiscal.ts
+│   ├── Vendedor.ts
+│   └── SyncLog.ts
+├── routes/
+│   ├── authRoutes.ts
+│   ├── orcamentoRoutes.ts
+│   ├── pedidoRoutes.ts
+│   └── regraRoutes.ts
+├── services/
+│   ├── syncService.ts
+│   ├── fiscalService.ts
+├── jobs/
+│   └── syncJob.ts
+└── config/
+    └── db.ts
+💻 Frontend (React + TypeScript)
+Autenticação (login moderno)
+
+Layout estilo dashboard (ex: Material UI ou Tailwind + shadcn/ui)
+
+Páginas:
+
+Dashboard
+
+Clientes
+
+Orçamentos (criar, listar, editar)
+
+Pedidos (visualização, workflow)
+
+Configurações (regras fiscais)
+
+
+Histórico de sincronizações

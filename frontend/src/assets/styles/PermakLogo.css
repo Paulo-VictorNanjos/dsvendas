@@ -1,0 +1,11 @@
+/* Estilos específicos para a logo da Permak */
+.permak-logo {
+  height: 200px;
+  width: auto;
+  object-fit: contain;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+} 

@@ -1,0 +1,48 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f9fa;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Estilos para o chat do Movidesk */
+.md-chat-widget {
+  transition: all 0.3s ease !important;
+  z-index: 999999 !important;
+  position: fixed !important;
+  bottom: 20px !important;
+  left: 20px !important;
+  right: auto !important;
+}
+
+/* Garantir que o botão do chat fique visível */
+.md-chat-widget .md-chat-widget__button {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Animação suave ao abrir/fechar o chat */
+.md-chat-widget.md-chat-widget--expanded {
+  transform: translateX(0) !important;
+}
+
+.md-chat-widget:not(.md-chat-widget--expanded) {
+  transform: translateX(0) !important;
+}
+
+/* Ajustes para dispositivos móveis */
+@media (max-width: 768px) {
+  .md-chat-widget {
+    bottom: 10px !important;
+    left: 10px !important;
+  }
+} 

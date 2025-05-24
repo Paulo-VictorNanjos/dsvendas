@@ -1,0 +1,8 @@
+"codigo","seq","descricao","ativo","nome_etapa"
+1,1,"PENDENTE",True,"Pedido Iniciado"
+2,2,"EM SEPARAÇÃO",True,"Pedido Realizado"
+3,3,"CONFERIDO",True,"Pedido Conferido"
+4,4,"DESPACHADO",True,"Pedido Despachado"
+5,5,"FATURADO",True,"Pedido Faturado"
+6,6,"NOTA FISCAL EMITIDA",True,"Nota Fiscal Emitida"
+7,7,"ENTREGUE",True,"Pedido Entregue"

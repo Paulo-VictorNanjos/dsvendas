@@ -1,0 +1,777 @@
+/* Layout principal - Container que envolve toda a aplicação */
+.layout-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f8fafc;
+}
+
+/* Definição das variáveis CSS globais para cores, sombras e transições */
+:root {
+  --sidebar-bg: #ffffff; /* Cor de fundo da barra lateral */
+  --sidebar-text-color: #64748b; /* Cor do texto da barra lateral */
+  --sidebar-hover-bg: #f1f5f9; /* Cor de fundo ao passar o mouse na barra lateral */
+  --sidebar-hover-text: #3a56e4; /* Cor do texto ao passar o mouse na barra lateral */
+  --sidebar-active-bg: rgba(58, 86, 228, 0.1); /* Cor de fundo do item ativo na barra lateral */
+  --sidebar-active-text: #3a56e4; /* Cor do texto do item ativo na barra lateral */
+  --navbar-bg: #224f8f; /* Cor de fundo da barra de navegação */
+  --categories-bg: #014DB8; /* Cor de fundo do menu de categorias */
+  --orange-color: #F47920; /* Cor laranja para destaques */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1); /* Sombra pequena */
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* Sombra média */
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Transição suave padrão */
+}
+
+/* Container do conteúdo principal - Flex container para sidebar e conteúdo */
+.content-wrapper {
+  display: flex;
+  flex: 1;
+  position: relative;
+}
+
+/* Barra de navegação superior */
+.modern-navbar {
+  background: var(--navbar-bg);
+  border-bottom: 3px solid #F58634;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: var(--shadow-md);
+  height: 80px; /* Altura reduzida para melhor visualização */
+}
+
+/* Conteúdo da barra de navegação */
+.navbar-content {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+/* Área esquerda da navbar com logo e busca */
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  flex: 1;
+}
+
+/* Container da marca/logo */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  margin-right: 2rem;
+}
+
+/* Imagem da logo */
+.brand-logo {
+  height: 35px;
+  width: auto;
+  object-fit: contain;
+  filter: brightness(0) invert(1); /* Isso fará a logo ficar branca */
+}
+
+/* Container da barra de busca */
+.search-container {
+  flex: 1;
+  max-width: 500px;
+}
+
+/* Formulário de busca */
+.search-container form {
+  width: 100%;
+}
+
+/* Grupo de input da busca */
+.search-container .input-group {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 25px;
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+/* Estilo quando o grupo de input está em foco */
+.search-container .input-group:focus-within {
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Campo de busca moderno */
+.modern-search {
+  border: none !important;
+  padding: 12px 20px !important;
+  font-size: 14px !important;
+  background: transparent !important;
+  color: white !important;
+}
+
+/* Placeholder do campo de busca */
+.modern-search::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Estilo do campo de busca em foco */
+.modern-search:focus {
+  box-shadow: none !important;
+  color: #333 !important;
+}
+
+/* Placeholder do campo de busca em foco */
+.modern-search:focus::placeholder {
+  color: #999;
+}
+
+/* Botão de busca */
+.search-button {
+  color: rgba(255, 255, 255, 0.7) !important;
+  padding: 0 20px !important;
+  font-size: 18px !important;
+  transition: var(--transition);
+  border: none !important;
+}
+
+/* Hover do botão de busca e estilo quando o grupo está em foco */
+.search-button:hover,
+.input-group:focus-within .search-button {
+  color: var(--navbar-bg) !important;
+  background: transparent !important;
+}
+
+/* Área direita da navbar com botões de acesso */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Botões de acesso na navbar */
+.nav-access-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: var(--transition);
+}
+
+/* Hover dos botões de acesso */
+.nav-access-btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Ícones nos botões de navegação */
+.nav-icon {
+  font-size: 24px;
+}
+
+/* Texto nos botões de navegação */
+.nav-text {
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: left;
+}
+
+/* Menu de categorias */
+.categories-menu {
+  background: var(--categories-bg);
+  padding: 12px 0;
+}
+
+/* Navegação das categorias */
+.categories-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Remove a barra de rolagem do menu de categorias */
+.categories-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* Item individual de categoria */
+.category-item {
+  color: white;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: var(--transition);
+}
+
+/* Hover do item de categoria */
+.category-item:hover {
+  color: var(--orange-color);
+}
+
+/* Estilos responsivos */
+@media (max-width: 1200px) {
+  /* Ajustes para telas grandes */
+  .navbar-content {
+    padding: 0 16px;
+  }
+  
+  .search-container {
+    max-width: 400px;
+  }
+  
+  .nav-text {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Ajustes para dispositivos móveis */
+  .navbar-content {
+    height: 80px;
+  }
+  
+  .brand-logo {
+    height: 25px;
+  }
+  
+  .search-container {
+    max-width: none;
+  }
+  
+  .modern-search {
+    padding: 8px 16px !important;
+  }
+}
+
+/* Barra lateral */
+.modern-sidebar {
+  width: 280px;
+  background: var(--sidebar-bg);
+  height: calc(100vh - 64px);
+  position: sticky;
+  top: 64px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  z-index: 900;
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Barra lateral colapsada */
+.modern-sidebar.collapsed {
+  width: 80px;
+}
+
+/* Conteúdo interno da barra lateral */
+.sidebar-inner {
+  flex: 1;
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+/* Item da barra lateral */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--sidebar-text-color);
+  position: relative;
+  font-weight: 500;
+  transition: var(--transition);
+  margin-bottom: 4px;
+}
+
+/* Hover do item da barra lateral */
+.sidebar-item:hover {
+  background-color: var(--sidebar-hover-bg);
+  color: var(--sidebar-hover-text);
+  transform: translateX(4px);
+}
+
+/* Item ativo da barra lateral */
+.sidebar-item.active {
+  background-color: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(58, 86, 228, 0.1);
+}
+
+/* Indicador de item ativo */
+.sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--navbar-bg);
+  border-radius: 0 4px 4px 0;
+}
+
+/* Ícone do item da barra lateral */
+.sidebar-icon {
+  font-size: 20px;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  transition: var(--transition);
+}
+
+/* Rótulo do item da barra lateral */
+.sidebar-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  transition: var(--transition);
+}
+
+/* Indicador de item ativo */
+.active-indicator {
+  font-size: 14px;
+  opacity: 0.7;
+  margin-left: 8px;
+}
+
+/* Rodapé da barra lateral */
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 12px;
+  color: var(--sidebar-text-color);
+  text-align: center;
+  background: rgba(241, 245, 249, 0.5);
+}
+
+/* Conteúdo principal */
+.main-content {
+  flex: 1;
+  padding: 24px;
+  transition: var(--transition);
+  background-color: #f8fafc;
+}
+
+/* Conteúdo principal expandido */
+.main-content.expanded {
+  margin-left: 80px;
+}
+
+/* Rodapé */
+.modern-footer {
+  background-color: white;
+  color: #64748b;
+  padding: 16px 24px;
+  text-align: center;
+  font-size: 14px;
+  border-top: 1px solid #f1f5f9;
+  margin-top: auto;
+}
+
+/* Overlay da barra lateral móvel */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  z-index: 900;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: fadeIn 0.2s ease forwards;
+  touch-action: none;
+}
+
+/* Barra lateral móvel */
+.modern-sidebar.mobile {
+  position: fixed;
+  left: -280px;
+  width: 280px;
+}
+
+/* Barra lateral móvel aberta */
+.modern-sidebar.mobile.open {
+  left: 0;
+}
+
+/* Conteúdo principal em modo móvel */
+.main-content.mobile {
+  margin-left: 0;
+  padding: 16px;
+}
+
+/* Animações */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Estilos para cards dentro do layout */
+.card {
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* Hover dos cards */
+.card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  transform: translateY(-5px);
+}
+
+/* Estilo para página ativa na barra lateral */
+.modern-sidebar .sidebar-item.active {
+  background: linear-gradient(90deg, rgba(58, 86, 228, 0.1) 0%, rgba(95, 39, 205, 0.05) 100%);
+  color: #3a56e4;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efeito de luz no item ativo */
+.modern-sidebar .sidebar-item.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 2s infinite;
+}
+
+/* Animação do efeito shimmer */
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* Dropdown do usuário */
+.nav-user-dropdown {
+  color: white !important;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  transition: var(--transition);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Hover e foco do dropdown do usuário */
+.nav-user-dropdown:hover,
+.nav-user-dropdown:focus {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Ícone do dropdown do usuário */
+.nav-user-dropdown svg {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+/* Menu dropdown */
+.dropdown-menu {
+  border: none;
+  box-shadow: var(--shadow-md);
+  border-radius: 12px;
+  padding: 8px;
+  background: white;
+  margin-top: 8px;
+}
+
+/* Item do dropdown */
+.dropdown-item {
+  border-radius: 8px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  color: var(--sidebar-text-color);
+  transition: var(--transition);
+  font-size: 14px;
+}
+
+/* Hover do item do dropdown */
+.dropdown-item:hover {
+  background-color: var(--sidebar-hover-bg);
+  color: var(--sidebar-hover-text);
+  transform: translateX(2px);
+}
+
+/* Ícone do item do dropdown */
+.dropdown-item svg {
+  font-size: 16px;
+  margin-right: 12px;
+}
+
+/* Personalização da barra de rolagem */
+.sidebar-inner::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-inner::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-inner::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+.sidebar-inner::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+/* Efeito de hover suave nos itens da barra lateral */
+.sidebar-item {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efeito de luz ao passar o mouse */
+.sidebar-item::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+/* Animação do efeito de luz */
+.sidebar-item:hover::after {
+  transform: translateX(100%);
+}
+
+/* Versão do aplicativo */
+.app-version {
+  font-size: 11px;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+/* Estilos para submenu na barra lateral */
+.sidebar-item-with-submenu {
+  position: relative;
+}
+
+/* Conteúdo do item com submenu */
+.sidebar-item-content {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  color: var(--sidebar-text-color);
+  border-radius: 8px;
+  margin-bottom: 5px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  width: 100%;
+}
+
+/* Hover do item com submenu */
+.sidebar-item-content:hover {
+  background-color: var(--sidebar-hover-bg);
+  color: var(--sidebar-hover-text);
+  text-decoration: none;
+}
+
+/* Item com submenu ativo */
+.sidebar-item-with-submenu.active > .sidebar-item-content {
+  background-color: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+}
+
+/* Indicador de submenu */
+.submenu-indicator {
+  margin-left: auto;
+  transition: transform 0.3s ease;
+}
+
+/* Indicador de submenu aberto */
+.submenu-indicator.open {
+  transform: rotate(180deg);
+}
+
+/* Container do submenu */
+.sidebar-submenu {
+  margin-top: -2px;
+  margin-bottom: 8px;
+  padding-left: 12px;
+}
+
+/* Item do submenu */
+.sidebar-submenu-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  color: var(--sidebar-text-color);
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+/* Hover do item do submenu */
+.sidebar-submenu-item:hover {
+  background-color: var(--sidebar-hover-bg);
+  color: var(--sidebar-hover-text);
+  text-decoration: none;
+}
+
+/* Item do submenu ativo */
+.sidebar-submenu-item.active {
+  background-color: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+}
+
+/* Ícone do item do submenu */
+.sidebar-submenu-icon {
+  margin-right: 10px;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* Rótulo do item do submenu */
+.sidebar-submenu-label {
+  flex: 1;
+}
+
+/* Ajuste para barra lateral colapsada */
+.sidebar.collapsed .sidebar-submenu {
+  display: none;
+}
+
+/* Botão de alternância da barra lateral moderno */
+.sidebar-toggle-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  margin-left: 16px;
+}
+
+/* Hover do botão de alternância */
+.sidebar-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Estado ativo do botão de alternância */
+.sidebar-toggle-btn:active {
+  transform: translateY(0);
+}
+
+/* Ícone do botão de alternância */
+.sidebar-toggle-btn svg {
+  transition: var(--transition);
+  position: relative;
+  z-index: 2;
+  font-size: 20px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Efeito de gradiente no botão */
+.sidebar-toggle-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent);
+  opacity: 0;
+  transition: var(--transition);
+}
+
+/* Efeito de brilho no botão */
+.sidebar-toggle-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: rotate(45deg);
+  transition: var(--transition);
+  opacity: 0;
+}
+
+/* Hover do efeito de gradiente */
+.sidebar-toggle-btn:hover::before {
+  opacity: 1;
+}
+
+/* Hover do efeito de brilho */
+.sidebar-toggle-btn:hover::after {
+  opacity: 1;
+  animation: shine 1.5s ease-in-out infinite;
+}
+
+/* Animação do efeito de brilho */
+@keyframes shine {
+  0% {
+    transform: translateX(-200%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(200%) rotate(45deg);
+  }
+}
+
+/* Responsividade para dispositivos móveis */
+@media (max-width: 768px) {
+  .sidebar-toggle-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    border-radius: 10px;
+    margin-left: 12px;
+  }
+  
+  .sidebar-toggle-btn svg {
+    font-size: 18px;
+  }
+} 

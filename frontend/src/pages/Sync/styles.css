@@ -1,0 +1,96 @@
+/* Estilos para a página de sincronização */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+}
+
+.page-title {
+  font-weight: 700;
+  color: #1b2a4e;
+  display: flex;
+  align-items: center;
+}
+
+/* Status badges */
+.badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.5em 0.75em;
+  border-radius: 50rem;
+}
+
+/* Animação para os ícones de sincronização */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn:hover .fa-sync {
+  animation: spin 1.5s infinite linear;
+}
+
+/* Layout dos cards */
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-header {
+  padding: 1.2rem 1.5rem;
+  background-color: rgba(44, 123, 229, 0.03);
+  border-bottom: none;
+}
+
+/* Estilo para ícones nos cards */
+.text-info {
+  color: #0dcaf0 !important;
+}
+
+.text-primary {
+  color: #2c7be5 !important;
+}
+
+.text-success {
+  color: #00d27a !important;
+}
+
+/* Estilo para tabela de logs */
+.table-modern {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.table-modern thead th {
+  background-color: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+  padding: 1rem;
+  border-top: none;
+  border-bottom: 2px solid #e9ecef;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+}
+
+.table-modern tbody tr {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.table-modern tbody tr:hover {
+  background-color: rgba(44, 123, 229, 0.05);
+}
+
+.table-modern tbody td {
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
+  vertical-align: middle;
+} 

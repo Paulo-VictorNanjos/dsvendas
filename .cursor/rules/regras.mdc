@@ -1,0 +1,54 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Princípios de Clean Code para sua Plataforma Web
+Nomes Significativos e Descritivos
+
+Utilize nomes claros para variáveis, funções e classes que reflitam seu propósito.
+
+Evite abreviações obscuras; prefira nomes que facilitem a compreensão do código.
+
+Funções com Responsabilidade Única
+
+Cada função deve realizar apenas uma tarefa específica.
+
+Isso facilita a leitura, manutenção e testes do código.
+
+Evite Comentários Desnecessários
+
+Escreva código que seja autoexplicativo, reduzindo a necessidade de comentários.
+
+Quando necessário, use comentários para explicar o "porquê" de uma implementação, não o "como".
+
+DRY (Don't Repeat Yourself)
+
+Evite duplicação de código; abstraia funcionalidades comuns em funções reutilizáveis.
+
+Isso reduz erros e facilita a manutenção.
+
+Tratamento de Erros Adequado
+
+Implemente mecanismos de tratamento de erros que forneçam informações úteis para depuração.
+
+Evite capturar exceções genéricas sem tratamento adequado.
+
+Código Limpo e Organizado
+
+Mantenha a estrutura do código organizada, com indentação consistente e espaçamento adequado.
+
+Remova código morto ou não utilizado para evitar confusão.
+
+Testes Automatizados
+
+Escreva testes automatizados para garantir que as funcionalidades funcionem conforme o esperado.
+
+Isso ajuda a prevenir regressões e facilita futuras alterações no código.
+
+Consistência na Estrutura do Projeto
+
+Siga uma estrutura de projeto consistente, facilitando a navegação e compreensão do código.
+
+
+Utilize padrões de projeto quando apropriado para resolver problemas recorrentes.

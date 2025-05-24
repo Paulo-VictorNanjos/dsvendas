@@ -1,0 +1,223 @@
+/* Barra de navegação superior */
+.modern-navbar {
+  background: var(--navbar-bg);
+  border-bottom: 3px solid #F58634;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: var(--shadow-md);
+  height: 80px;
+}
+
+/* Conteúdo da barra de navegação */
+.navbar-content {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+/* Área esquerda da navbar com logo e busca */
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  flex: 1;
+}
+
+/* Container da marca/logo */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  margin-right: 2rem;
+}
+
+/* Imagem da logo */
+.brand-logo {
+  height: 30px;
+  width: auto;
+  object-fit: contain;
+  background: transparent;
+}
+
+/* Container da barra de busca */
+.search-container {
+  flex: 1;
+  max-width: 500px;
+}
+
+/* Grupo de input da busca */
+.search-container .input-group {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 25px;
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+/* Estilo quando o grupo de input está em foco */
+.search-container .input-group:focus-within {
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Campo de busca moderno */
+.modern-search {
+  border: none !important;
+  padding: 12px 20px !important;
+  font-size: 14px !important;
+  background: transparent !important;
+  color: white !important;
+}
+
+/* Placeholder do campo de busca */
+.modern-search::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Estilo do campo de busca em foco */
+.modern-search:focus {
+  box-shadow: none !important;
+  color: #333 !important;
+}
+
+/* Placeholder do campo de busca em foco */
+.modern-search:focus::placeholder {
+  color: #999;
+}
+
+/* Botão de busca */
+.search-button {
+  color: rgba(255, 255, 255, 0.7) !important;
+  padding: 0 20px !important;
+  font-size: 18px !important;
+  transition: var(--transition);
+  border: none !important;
+}
+
+/* Hover do botão de busca e estilo quando o grupo está em foco */
+.search-button:hover,
+.input-group:focus-within .search-button {
+  color: var(--navbar-bg) !important;
+  background: transparent !important;
+}
+
+/* Área direita da navbar com botões de acesso */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Botões de acesso na navbar */
+.nav-access-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: var(--transition);
+}
+
+/* Hover dos botões de acesso */
+.nav-access-btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Ícones nos botões de navegação */
+.nav-icon {
+  font-size: 24px;
+}
+
+/* Texto nos botões de navegação */
+.nav-text {
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: left;
+}
+
+/* Botão de alternância da barra lateral */
+.sidebar-toggle-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.sidebar-toggle-btn:hover {
+  transform: translateY(-2px);
+  opacity: 0.8;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .modern-navbar,
+  .navbar-content {
+    height: 60px;
+    padding: 0 10px;
+  }
+  
+  .navbar-left {
+    gap: 10px;
+  }
+  
+  .brand-logo {
+    height: 25px;
+  }
+  
+  .search-container {
+    display: none;
+  }
+  
+  .nav-text {
+    display: none;
+  }
+  
+  .permak-logo {
+    max-width: 120px;
+    height: auto;
+  }
+  
+  .navbar-right {
+    gap: 8px;
+  }
+  
+  .nav-access-btn {
+    padding: 6px;
+  }
+  
+  .sidebar-toggle-btn {
+    padding: 6px;
+  }
+}
+
+/* Ajustes adicionais para telas muito pequenas */
+@media (max-width: 370px) {
+  .navbar-content {
+    padding: 0 8px;
+  }
+  
+  .permak-logo {
+    max-width: 100px;
+  }
+  
+  .nav-access-btn {
+    padding: 4px;
+  }
+  
+  .nav-icon {
+    font-size: 20px;
+  }
+} 
