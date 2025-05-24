@@ -47,4 +47,10 @@ tmp/
 
 # Uploads
 uploads/
-public/uploads/ 
+public/uploads/
+
+# Arquivos ZIP grandes
+*.zip
+dsvendas.zip
+backend.zip
+dsvendasnovo.zip 
