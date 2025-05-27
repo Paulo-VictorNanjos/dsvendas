@@ -5,7 +5,7 @@ console.log('Knexfile Config:', {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'postgres',
   database: process.env.DB_DATABASE || 'dsvendas',
-  port: process.env.DB_PORT || 5432
+  port: process.env.DB_PORT || 5434
 });
 
 module.exports = {
@@ -14,7 +14,7 @@ module.exports = {
     connection: {
       host: process.env.DB_HOST || 'localhost',
       user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD,
+      password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'dsvendas',
       port: process.env.DB_PORT || '5434'
     },

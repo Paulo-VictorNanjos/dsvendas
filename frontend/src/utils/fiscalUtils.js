@@ -3,10 +3,7 @@
  * Inclui funções para verificar regras fiscais, como Substituição Tributária (ST)
  */
 
-import axios from 'axios';
-import { getAPIBaseUrl } from './api';
-
-const API_URL = getAPIBaseUrl();
+import api from '../services/api';
 
 /**
  * Verifica se um produto tem Substituição Tributária (ST) para uma UF específica
@@ -17,7 +14,7 @@ const API_URL = getAPIBaseUrl();
  */
 export const verificarSubstituicaoTributaria = async (codigoProduto, uf) => {
   try {
-    const response = await axios.get(`${API_URL}/fiscal/verificar-st/${codigoProduto}/${uf}`);
+    const response = await api.get(`/fiscal/verificar-st/${codigoProduto}/${uf}`);
     return response.data;
   } catch (error) {
     console.error('Erro ao verificar substituição tributária:', error);

@@ -14,8 +14,8 @@ const getBaseURL = () => {
     return 'http://localhost:3001/api';
   }
   
-  // Em produção, usa a URL do servidor
-  return process.env.REACT_APP_API_URL || 'https://duesoft.studywob.com.br/api';
+  // Em produção, sempre usa HTTPS
+  return 'https://studywob.com.br/api';
 };
 
 // Criar uma instância do axios com a URL base da API
@@ -30,7 +30,7 @@ const api = axios.create({
 // Log para debug
 debugLog('[API] Usando a URL base:', getBaseURL());
 
-// Interceptador para adicionar token de autenticação se necessário
+// Interceptador para adicionar token de autenticação
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {

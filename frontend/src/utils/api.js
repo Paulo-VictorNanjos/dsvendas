@@ -7,8 +7,13 @@
  * @returns {string} URL base da API
  */
 export const getAPIBaseUrl = () => {
-  // Usar a variável de ambiente se disponível, caso contrário, usar localhost
-  return process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+  // Em desenvolvimento local, usa localhost
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:3001/api';
+  }
+  
+  // Em produção, sempre usa HTTPS
+  return 'https://studywob.com.br/api';
 };
 
 export default {

@@ -1,20 +1,3 @@
-/**
- * Utilitários para cálculos fiscais, especialmente ICMS e ICMS-ST
- * Implementa a mesma lógica do sistema mobile em Java
- */
-
-/**
- * IMPORTANTE: No ambiente de produção, os parâmetros do cálculo devem vir das seguintes tabelas:
- * 
- * - aliqIcms: Tabela regras_icms_itens, campo aliq_icms ou aliq_icms_contr (depende se cliente é contribuinte)
- * - aliqInterna: Tabela class_fiscal_tributacoes, campo aliq_interna (para o estado de destino)
- * - iva: Tabela class_fiscal_tributacoes, campo iva
- * - redIcms: Tabela regras_icms_itens, campo red_icms ou red_icms_contr
- * - icms_st: Tabela regras_icms_itens, campo icms_st
- * - aliqFcpSt: Tabela class_fiscal_tributacoes, campo aliq_fcpst
- * 
- * Nunca use valores mockados em produção. O cálculo deve ser baseado nos dados reais das tabelas.
- */
 
 /**
  * Função de arredondamento aprimorada para 4 casas decimais
@@ -36,29 +19,6 @@ const arredondar = (valor, casas = 4) => {
 };
 
 /**
- * Processo de Cálculo do ICMS e ICMS Substituição Tributária (ST)
- * 
- * Exemplo prático do cálculo com TWEETER 160 WATTS:
- * 
- * 1. Identificação do Valor do ICMS:
- *    - Valor Total do Produto: R$ 99,50
- *    - Alíquota de ICMS para o Maranhão (MA): 4%
- *    - Valor do ICMS = R$ 99,50 × 4% = R$ 3,98
- * 
- * 2. Cálculo da Base de Cálculo do ICMS ST:
- *    - Valor Total do Produto: R$ 99,50
- *    - Valor do IPI: R$ 9,70 (9,75% de R$ 99,50)
- *    - IVA: 107,47%
- *    - Base de Cálculo do ICMS ST = (R$ 99,50 + R$ 9,70) × (1 + 107,47%) = R$ 226,54
- * 
- * 3. Cálculo do ICMS Substituição Tributária (ST):
- *    - Base de Cálculo do ICMS ST: R$ 226,54
- *    - Alíquota Interna do Maranhão (MA): 23%
- *    - Base de Cálculo do ICMS ST Ajustada = R$ 226,54 × 23% = R$ 52,10
- * 
- * 4. Cálculo Final do ICMS Substituição Tributária:
- *    - Valor Final do ICMS ST = R$ 52,10 - R$ 3,98 = R$ 48,12
- * 
  * @param {Object} params Parâmetros para o cálculo
  * @param {number} params.valorBruto Valor bruto (quantidade * valor unitário)
  * @param {number} params.valorIpi Valor do IPI
@@ -174,12 +134,6 @@ export const verificarCSTSubstituicaoTributaria = (cst) => {
  * @returns {Object} Objeto com todos os valores de tributos calculados
  */
 export const calcularTributos = (item, dadosFiscais, dadosClassificacao, ufCliente, ufEmpresa = 'SP', isImportado = false) => {
-  // IMPORTANTE: dadosFiscais e dadosClassificacao devem ser obtidos do servidor
-  // através de consultas às tabelas:
-  // - regras_fiscais_produtos
-  // - regras_icms_itens
-  // - class_fiscal_tributacoes
-  // Não utilize valores mockados ou hardcoded para estes parâmetros
   
   const {
     quantidade = 0,
