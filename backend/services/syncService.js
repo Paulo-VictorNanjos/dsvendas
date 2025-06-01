@@ -350,7 +350,8 @@ class SyncService {
           unidade,
           unidade2,
           CAST(preco_venda AS FLOAT) as preco_venda,
-          CAST(preco_venda2 AS FLOAT) as preco_venda2
+          CAST(preco_venda2 AS FLOAT) as preco_venda2,
+          perc_desconto_maximo
         FROM vw_produtos_precos 
         ORDER BY nome
       `);
@@ -378,7 +379,8 @@ class SyncService {
           unidade,
           unidade2,
           CAST(preco_venda AS FLOAT) as preco_venda,
-          CAST(preco_venda2 AS FLOAT) as preco_venda2
+          CAST(preco_venda2 AS FLOAT) as preco_venda2,
+          perc_desconto_maximo 
         FROM vw_produtos_precos 
         WHERE LOWER(nome) LIKE ? OR LOWER(codigo::text) LIKE ?
         ORDER BY nome
@@ -1436,10 +1438,35 @@ class SyncService {
   // Buscar produto por ID
   async getProductById(id) {
     try {
-      return await knex('produtos')
+      // Primeiro buscar da tabela local
+      const localProduct = await knex('produtos')
         .select('*')
         .where('codigo', id)
         .first();
+        
+      if (!localProduct) {
+        return null;
+      }
+      
+      // Buscar perc_desconto_maximo da view do ERP
+      try {
+        const erpProductDiscount = await erpConnection.raw(`
+          SELECT perc_desconto_maximo 
+          FROM vw_produtos_precos 
+          WHERE codigo = ?
+        `, [id]);
+        
+        if (erpProductDiscount.rows && erpProductDiscount.rows.length > 0) {
+          localProduct.perc_desconto_maximo = erpProductDiscount.rows[0].perc_desconto_maximo || 0;
+        } else {
+          localProduct.perc_desconto_maximo = 0; // Valor padrão se não encontrar
+        }
+      } catch (erpError) {
+        console.warn(`Aviso: Não foi possível buscar perc_desconto_maximo para produto ${id}:`, erpError.message);
+        localProduct.perc_desconto_maximo = 0; // Valor padrão em caso de erro
+      }
+      
+      return localProduct;
     } catch (error) {
       console.error(`Erro ao buscar produto ${id}:`, error);
       throw error;
@@ -1640,6 +1667,38 @@ class SyncService {
       return true;
     } catch (error) {
       console.error(`Erro ao excluir produto ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async applyDiscount(productId, requestedDiscount, unitPrice) {
+    try {
+      const product = await this.getProductById(productId);
+
+      if (!product) {
+        throw new Error('Produto não encontrado');
+      }
+
+      const maxDiscount = product.perc_desconto_maximo || 0;
+      let appliedDiscount = requestedDiscount;
+      let message = '';
+
+      if (requestedDiscount > maxDiscount) {
+        appliedDiscount = maxDiscount;
+        message = `Desconto ajustado para o máximo permitido de ${maxDiscount}%.`
+      }
+
+      const discountedPrice = unitPrice * (1 - appliedDiscount / 100);
+
+      return {
+        appliedDiscount,
+        discountedPrice,
+        message,
+        originalPrice: unitPrice,
+        maxAllowedDiscount: maxDiscount
+      };
+    } catch (error) {
+      console.error('Erro ao aplicar desconto:', error);
       throw error;
     }
   }

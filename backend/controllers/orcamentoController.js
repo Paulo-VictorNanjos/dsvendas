@@ -15,30 +15,71 @@ const calcularTotaisDesconto = (itens) => {
   let valorIpi = 0;
   let valorSt = 0;
 
-  itens.forEach(item => {
-    // Garantir que os valores sejam numéricos
-    const quantidade = parseFloat(item.quantidade) || 0;
-    const valorUnitario = parseFloat(item.valor_unitario) || 0;
-    const valorBruto = quantidade * valorUnitario;
+  console.log('🔄 CALCULANDO TOTAIS NO BACKEND - Recebendo itens:', itens.length);
+
+  itens.forEach((item, index) => {
+    console.log(`📝 ITEM ${index + 1} - BACKEND TOTAIS:`, {
+      produto_codigo: item.produto_codigo,
+      valoresRecebidos: {
+        valor_bruto: item.valor_bruto,
+        valor_desconto: item.valor_desconto,
+        valor_liquido: item.valor_liquido,
+        valor_com_desconto: item.valor_com_desconto,
+        valor_ipi: item.valor_ipi,
+        valor_icms_st: item.valor_icms_st
+      }
+    });
+
+    // CORREÇÃO: Usar valores já calculados do frontend ao invés de recalcular
+    const valorBrutoItem = parseFloat(item.valor_bruto) || 0;
+    const valorDescontoItem = parseFloat(item.valor_desconto) || 0;
+    const valorComDescontoItem = parseFloat(item.valor_com_desconto) || parseFloat(item.valor_liquido) || 0;
+    const valorIpiItem = parseFloat(item.valor_ipi) || 0;
+    const valorStItem = parseFloat(item.valor_icms_st) || 0;
     
-    // Calcular desconto
-    const desconto = parseFloat(item.desconto || 0);
-    const valorDescontoItem = (valorBruto * desconto) / 100;
+    console.log(`💰 VALORES PROCESSADOS ITEM ${index + 1}:`, {
+      valorBrutoItem,
+      valorDescontoItem,
+      valorComDescontoItem,
+      valorIpiItem,
+      valorStItem
+    });
     
-    // Calcular valores tributários
-    const valorIpiItem = parseFloat(item.valor_ipi || 0);
-    const valorStItem = parseFloat(item.valor_icms_st || 0);
-    
-    // Totalizar
-    valorTotal += valorBruto;
+    // Totalizar usando valores do frontend
+    valorTotal += valorBrutoItem;
     valorDesconto += valorDescontoItem;
+    valorComDesconto += valorComDescontoItem;
     valorIpi += valorIpiItem;
     valorSt += valorStItem;
+    
+    console.log(`📊 TOTAIS ACUMULADOS ATÉ ITEM ${index + 1}:`, {
+      valorTotal,
+      valorDesconto,
+      valorComDesconto,
+      valorIpi,
+      valorSt
+    });
   });
   
-  valorComDesconto = valorTotal - valorDesconto;
+  console.log('✅ TOTAIS FINAIS CALCULADOS NO BACKEND:', {
+    valorTotal,
+    valorDesconto,
+    valorComDesconto,
+    valorIpi,
+    valorSt
+  });
   
   return { valorTotal, valorDesconto, valorComDesconto, valorIpi, valorSt };
+};
+
+// Função de arredondamento aritmético preciso para evitar problemas de ponto flutuante
+const arredondar = (valor, casas = 2) => {
+  const numeroValido = Number(valor);
+  if (numeroValido === 0 || isNaN(numeroValido)) {
+    return 0;
+  }
+  const fator = Math.pow(10, casas);
+  return Math.round((numeroValido + Number.EPSILON) * fator) / fator;
 };
 
 module.exports = {
@@ -122,6 +163,10 @@ module.exports = {
           'orcamentos_itens.produto_codigo',
           'orcamentos_itens.quantidade',
           'orcamentos_itens.valor_unitario',
+          'orcamentos_itens.valor_bruto',
+          'orcamentos_itens.valor_desconto',
+          'orcamentos_itens.valor_liquido',
+          'orcamentos_itens.valor_com_desconto',
           'orcamentos_itens.valor_total',
           'orcamentos_itens.desconto',
           'orcamentos_itens.st_icms',
@@ -141,38 +186,61 @@ module.exports = {
       console.log('Query dos itens:', itens.toString());
 
       // Processar itens para incluir informações adicionais
-      const itensProcessados = itens.map(item => {
-        // Calcular valores para cada item
+      const itensProcessados = await Promise.all(itens.map(async (item) => {
+        // Obter dados fiscais do produto
+        let dadosFiscais = null;
+        try {
+          dadosFiscais = await fiscalRulesService.getDadosFiscaisProduto(item.produto_codigo);
+          console.log(`Dados fiscais recuperados para produto ${item.produto_codigo}:`, dadosFiscais);
+        } catch (error) {
+          console.error(`Erro ao buscar dados fiscais do produto ${item.produto_codigo}:`, error);
+        }
+  
+        // Garantir que os valores sejam numéricos - USAR VALORES DO BANCO
         const quantidade = parseFloat(item.quantidade) || 0;
         const valorUnitario = parseFloat(item.valor_unitario) || 0;
-        const desconto = parseFloat(item.desconto) || 0;
-        const valorBruto = quantidade * valorUnitario;
-        const valorDesconto = (valorBruto * desconto) / 100;
-        const valorLiquido = valorBruto - valorDesconto;
-        const valorIpi = parseFloat(item.valor_ipi) || 0;
-        const valorIcmsSt = parseFloat(item.valor_icms_st) || 0;
-        const valorTotal = valorLiquido + valorIpi + valorIcmsSt;
-
+        const valorBruto = parseFloat(item.valor_bruto) || (quantidade * valorUnitario); // Preferir valor do banco
+        const desconto = parseFloat(item.desconto || 0);
+        const valorDesconto = parseFloat(item.valor_desconto) || ((valorBruto * desconto) / 100); // Preferir valor do banco
+        const valorLiquido = parseFloat(item.valor_liquido) || (valorBruto - valorDesconto); // Preferir valor do banco
+        const valorComDesconto = parseFloat(item.valor_com_desconto) || valorLiquido; // USAR valor do banco
+        
+        console.log(`⚠️ BACKEND GET_BY_ID - Item ${item.produto_codigo}:`, {
+          valoresDoBanco: {
+            valor_bruto_banco: item.valor_bruto,
+            valor_desconto_banco: item.valor_desconto,
+            valor_liquido_banco: item.valor_liquido,
+            valor_com_desconto_banco: item.valor_com_desconto
+          },
+          valoresProcessados: {
+            valorBruto,
+            valorDesconto,
+            valorLiquido,
+            valorComDesconto
+          }
+        });
+        
         return {
           ...item,
           valor_bruto: valorBruto.toFixed(2),
           valor_desconto: valorDesconto.toFixed(2),
           valor_liquido: valorLiquido.toFixed(2),
-          valor_total: valorTotal.toFixed(2),
+          valor_com_desconto: valorComDesconto.toFixed(2),
+          valor_total: valorComDesconto.toFixed(2),
           // Adicionar campos de unidade
           unidade: item.item_unidade || item.unidade,
-          isUnidade2: item.is_unidade2
+          is_unidade2: item.is_unidade2 === true ? true : false
         };
-      });
+      }));
 
       // Calcular totais do orçamento
       const totais = itensProcessados.reduce((acc, item) => {
         acc.valor_produtos += parseFloat(item.valor_bruto) || 0;
         acc.valor_descontos += parseFloat(item.valor_desconto) || 0;
-        acc.valor_liquido += parseFloat(item.valor_liquido) || 0;
+        acc.valor_liquido += parseFloat(item.valor_com_desconto) || 0;
         acc.valor_ipi += parseFloat(item.valor_ipi) || 0;
         acc.valor_st += parseFloat(item.valor_icms_st) || 0;
-        acc.valor_total += parseFloat(item.valor_total) || 0;
+        acc.valor_total += parseFloat(item.valor_com_desconto) || 0;
         return acc;
       }, {
         valor_produtos: 0,
@@ -296,12 +364,12 @@ module.exports = {
         // Usar os nomes corretos dos campos no banco de dados
         cod_forma_pagto: form_pagto,
         cod_cond_pagto: cond_pagto,
-        vl_desconto: valorDesconto,
-        vl_produtos: valorTotal,
-        vl_com_desconto: valorComDesconto,
-        vl_ipi: valorIpi,
-        vl_st: valorSt,
-        vl_total: valorComDesconto + valorIpi + valorSt, // Total final
+        vl_desconto: arredondar(valorDesconto, 2),
+        vl_produtos: arredondar(valorTotal, 2),
+        vl_com_desconto: arredondar(valorComDesconto, 2),
+        vl_ipi: arredondar(valorIpi, 2),
+        vl_st: arredondar(valorSt, 2),
+        vl_total: arredondar(arredondar(valorComDesconto, 2) + arredondar(valorIpi, 2) + arredondar(valorSt, 2), 2), // Total final
         cod_status: 1
       }, ['codigo']);
 
@@ -329,85 +397,43 @@ module.exports = {
         // Garantir que os valores sejam numéricos
         const quantidade = parseFloat(item.quantidade) || 0;
         const valorUnitario = parseFloat(item.valor_unitario) || 0;
-        const valorBruto = quantidade * valorUnitario;
         
-        // Calcular desconto
+        // CORREÇÃO: Usar valores já calculados no frontend seguindo a lógica do ERP
+        const valorBruto = parseFloat(item.valor_bruto) || (quantidade * valorUnitario);
         const desconto = parseFloat(item.desconto || 0);
-        const valorDesconto = (valorBruto * desconto) / 100;
-        const valorLiquido = valorBruto - valorDesconto;
+        const valorDesconto = parseFloat(item.valor_desconto) || ((valorBruto * desconto) / 100);
+        const valorLiquido = parseFloat(item.valor_liquido) || (valorBruto - valorDesconto);
+        const valorComDesconto = parseFloat(item.valor_com_desconto) || valorLiquido;
         
-        // Usar dados dos campos tributários
-        const aliqIcms = parseFloat(dadosFiscais?.aliq_icms || 0);
-        const aliqIpi = parseFloat(dadosFiscais?.aliq_ipi || 0);
-        const redIcms = parseFloat(dadosFiscais?.red_icms || 0);
+        // CORREÇÃO: Usar valores de tributos já calculados e salvos no banco
+        const aliqIcms = parseFloat(item.aliq_icms) || parseFloat(dadosFiscais?.aliq_icms || 0);
+        const aliqIpi = parseFloat(item.aliq_ipi) || parseFloat(dadosFiscais?.aliq_ipi || 0);
+        const valorIcms = parseFloat(item.valor_icms) || 0;
+        const valorIpi = parseFloat(item.valor_ipi) || 0;
+        const valorIcmsSt = parseFloat(item.valor_icms_st) || 0;
         
-        // Calcular a base do ICMS aplicando a possível redução (se existir)
-        const baseIcms = valorLiquido * (1 - (redIcms / 100));
-        
-        // Calcular valor do ICMS
-        const valorIcms = baseIcms * (aliqIcms / 100);
-        
-        // Calcular valor do IPI
-        const valorIpi = parseFloat(item.valor_ipi) || (valorLiquido * aliqIpi / 100);
-        
-        // Calcular ICMS-ST usando o serviço fiscal
-        let valorIcmsSt = 0;
-        let temST = false;
-        
-        try {
-          // Buscar cliente para obter a UF
-          const cliente = await db('clientes')
-            .where('codigo', cod_cliente)
-            .first();
-            
-          if (cliente) {
-            const resultadoST = await fiscalRulesService.calcularIcmsST({
-              codigoProduto: item.produto_codigo,
-              ufDestino: cliente.uf,
-              valorProduto: valorBruto,
-              valorIpi: valorIpi,
-              valorDesconto: valorDesconto
-            });
-            
-            console.log(`Resultado cálculo ST para produto ${item.produto_codigo}:`, resultadoST);
-            
-            if (resultadoST.success && resultadoST.temST) {
-              // CORREÇÃO: Usar o valor total do ST (ICMS-ST + FCP-ST)
-              valorIcmsSt = resultadoST.valorTotalST;
-              temST = true;
-            
-              // Log para debug do valor total do ST
-              console.log(`Valor total ST para produto ${item.produto_codigo}:`, {
-                valorICMSST: resultadoST.valorICMSST,
-                valorFCPST: resultadoST.valorFCPST,
-                valorTotalST: resultadoST.valorTotalST
-              });
-            }
+        console.log(`⚠️ BACKEND - Processando item ${item.produto_codigo}:`, {
+          valoresRecebidosDoFrontend: {
+            valor_bruto: item.valor_bruto,
+            valor_desconto: item.valor_desconto,
+            valor_liquido: item.valor_liquido,
+            valor_ipi: item.valor_ipi,
+            aliq_ipi: item.aliq_ipi
+          },
+          valoresProcessados: {
+            valorBruto,
+            valorDesconto,
+            valorLiquido,
+            valorIpi,
+            aliqIpi
+          },
+          valoresArredondados: {
+            valor_bruto: arredondar(valorBruto, 2),
+            valor_desconto: arredondar(valorDesconto, 2),
+            valor_liquido: arredondar(valorLiquido, 2),
+            valor_ipi: arredondar(valorIpi, 2),
+            valor_total: arredondar(arredondar(valorLiquido, 2) + arredondar(valorIpi, 2) + arredondar(valorIcmsSt, 2), 2)
           }
-        } catch (error) {
-          console.error(`Erro ao calcular ICMS-ST para produto ${item.produto_codigo}:`, error);
-        }
-        
-        // Valor total com impostos
-        const valorTotal = valorLiquido + valorIpi + valorIcmsSt;
-        
-        // Log para debug
-        console.log(`Item ${item.produto_codigo} valores calculados:`, {
-          quantidade,
-          valorUnitario,
-          valorBruto,
-          desconto,
-          valorDesconto,
-          valorLiquido,
-          redIcms,
-          baseIcms,
-          aliqIcms,
-          valorIcms,
-          aliqIpi,
-          valorIpi,
-          temST,
-          valorIcmsSt,
-          valorTotal
         });
         
         return {
@@ -415,17 +441,21 @@ module.exports = {
           orcamento_codigo: orcamentoCodigoStr,
           produto_codigo: item.produto_codigo,
           quantidade,
-          valor_unitario: valorUnitario,
-          valor_total: valorTotal,
+          valor_unitario: arredondar(valorUnitario, 2),
+          valor_bruto: arredondar(valorBruto, 2),
+          valor_desconto: arredondar(valorDesconto, 2),
+          valor_liquido: arredondar(valorLiquido, 2),
+          valor_com_desconto: valorComDesconto.toFixed(2),
+          valor_total: arredondar(arredondar(valorComDesconto, 2) + arredondar(valorIpi, 2) + arredondar(valorIcmsSt, 2), 2),
           // Campos fiscais
-          desconto: desconto,
+          desconto: arredondar(desconto, 2),
           st_icms: dadosFiscais?.st_icms || '00',
-          aliq_icms: aliqIcms,
-          valor_icms: valorIcms,
-          icms_st: temST ? 'S' : 'N',
-          valor_icms_st: valorIcmsSt,
-          ipi: aliqIpi,
-          valor_ipi: valorIpi,
+          aliq_icms: arredondar(aliqIcms, 2),
+          valor_icms: arredondar(valorIcms, 2),
+          icms_st: valorIcmsSt > 0 ? 'S' : 'N',
+          valor_icms_st: arredondar(valorIcmsSt, 2),
+          ipi: arredondar(aliqIpi, 2),
+          valor_ipi: arredondar(valorIpi, 2),
           class_fiscal: dadosFiscais?.class_fiscal || '',
           ncm: dadosFiscais?.ncm || '',
           cod_origem_prod: dadosFiscais?.cod_origem_prod || '0',
@@ -433,7 +463,7 @@ module.exports = {
           dt_inc: new Date(),
           // Adicionar campos de unidade
           unidade: item.unidade || '',
-          is_unidade2: item.isUnidade2 === true ? true : false
+          is_unidade2: item.is_unidade2 === true ? true : false
         };
       }));
 
@@ -530,12 +560,12 @@ module.exports = {
           // Usar os nomes corretos dos campos no banco de dados
           cod_forma_pagto: form_pagto,
           cod_cond_pagto: cond_pagto,
-          vl_desconto: valorDesconto,
-          vl_produtos: valorTotal,
-          vl_com_desconto: valorComDesconto,
-          vl_ipi: valorIpi,
-          vl_st: valorSt,
-          vl_total: valorComDesconto + valorIpi + valorSt, // Calcular valor total somando impostos
+          vl_desconto: arredondar(valorDesconto, 2),
+          vl_produtos: arredondar(valorTotal, 2),
+          vl_com_desconto: arredondar(valorComDesconto, 2),
+          vl_ipi: arredondar(valorIpi, 2),
+          vl_st: arredondar(valorSt, 2),
+          vl_total: arredondar(arredondar(valorComDesconto, 2) + arredondar(valorIpi, 2) + arredondar(valorSt, 2), 2), // Calcular valor total somando impostos
           dt_alt: new Date()
         });
 
@@ -570,85 +600,43 @@ module.exports = {
           // Garantir que os valores sejam numéricos
           const quantidade = parseFloat(item.quantidade) || 0;
           const valorUnitario = parseFloat(item.valor_unitario) || 0;
-          const valorBruto = quantidade * valorUnitario;
           
-          // Usar dados fiscais do produto se não forem fornecidos no item
+          // CORREÇÃO: Usar valores já calculados no frontend seguindo a lógica do ERP
+          const valorBruto = parseFloat(item.valor_bruto) || (quantidade * valorUnitario);
           const desconto = parseFloat(item.desconto || 0);
-          const valorDesconto = (valorBruto * desconto) / 100;
-          const valorLiquido = valorBruto - valorDesconto;
+          const valorDesconto = parseFloat(item.valor_desconto) || ((valorBruto * desconto) / 100);
+          const valorLiquido = parseFloat(item.valor_liquido) || (valorBruto - valorDesconto);
+          const valorComDesconto = parseFloat(item.valor_com_desconto) || valorLiquido;
           
-          // Usar dados dos campos tributários
-          const aliqIcms = parseFloat(dadosFiscais?.aliq_icms || 0);
-          const aliqIpi = parseFloat(dadosFiscais?.aliq_ipi || 0);
-          const redIcms = parseFloat(dadosFiscais?.red_icms || 0);
+          // CORREÇÃO: Usar valores de tributos já calculados e salvos no banco
+          const aliqIcms = parseFloat(item.aliq_icms) || parseFloat(dadosFiscais?.aliq_icms || 0);
+          const aliqIpi = parseFloat(item.aliq_ipi) || parseFloat(dadosFiscais?.aliq_ipi || 0);
+          const valorIcms = parseFloat(item.valor_icms) || 0;
+          const valorIpi = parseFloat(item.valor_ipi) || 0;
+          const valorIcmsSt = parseFloat(item.valor_icms_st) || 0;
           
-          // Calcular a base do ICMS aplicando a possível redução (se existir)
-          const baseIcms = valorLiquido * (1 - (redIcms / 100));
-          
-          // Calcular valor do ICMS
-          const valorIcms = baseIcms * (aliqIcms / 100);
-          
-          // Calcular valor do IPI
-          const valorIpi = parseFloat(item.valor_ipi) || (valorLiquido * aliqIpi / 100);
-          
-          // Calcular ICMS-ST usando o serviço fiscal
-          let valorIcmsSt = 0;
-          let temST = false;
-          
-          try {
-            // Buscar cliente para obter a UF
-            const cliente = await db('clientes')
-              .where('codigo', cod_cliente)
-              .first();
-              
-            if (cliente) {
-              const resultadoST = await fiscalRulesService.calcularIcmsST({
-                codigoProduto: item.produto_codigo,
-                ufDestino: cliente.uf,
-                valorProduto: valorBruto,
-                valorIpi: valorIpi,
-                valorDesconto: valorDesconto
-              });
-              
-              console.log(`Resultado cálculo ST para produto ${item.produto_codigo}:`, resultadoST);
-              
-              if (resultadoST.success && resultadoST.temST) {
-                // CORREÇÃO: Usar o valor total do ST (ICMS-ST + FCP-ST)
-                valorIcmsSt = resultadoST.valorTotalST;
-                temST = true;
-              
-                // Log para debug do valor total do ST
-                console.log(`Valor total ST para produto ${item.produto_codigo}:`, {
-                  valorICMSST: resultadoST.valorICMSST,
-                  valorFCPST: resultadoST.valorFCPST,
-                  valorTotalST: resultadoST.valorTotalST
-                });
-              }
+          console.log(`⚠️ BACKEND - Processando item ${item.produto_codigo}:`, {
+            valoresRecebidosDoFrontend: {
+              valor_bruto: item.valor_bruto,
+              valor_desconto: item.valor_desconto,
+              valor_liquido: item.valor_liquido,
+              valor_ipi: item.valor_ipi,
+              aliq_ipi: item.aliq_ipi
+            },
+            valoresProcessados: {
+              valorBruto,
+              valorDesconto,
+              valorLiquido,
+              valorIpi,
+              aliqIpi
+            },
+            valoresArredondados: {
+              valor_bruto: arredondar(valorBruto, 2),
+              valor_desconto: arredondar(valorDesconto, 2),
+              valor_liquido: arredondar(valorLiquido, 2),
+              valor_ipi: arredondar(valorIpi, 2),
+              valor_total: arredondar(arredondar(valorLiquido, 2) + arredondar(valorIpi, 2) + arredondar(valorIcmsSt, 2), 2)
             }
-          } catch (error) {
-            console.error(`Erro ao calcular ICMS-ST para produto ${item.produto_codigo}:`, error);
-          }
-          
-          // Valor total com impostos
-          const valorTotal = valorLiquido + valorIpi + valorIcmsSt;
-          
-          // Log de valores para debugging
-          console.log(`Item ${item.produto_codigo} valores atualizados:`, {
-            quantidade,
-            valorUnitario,
-            valorBruto,
-            desconto,
-            valorDesconto,
-            valorLiquido,
-            redIcms,
-            baseIcms,
-            aliqIcms,
-            valorIcms,
-            aliqIpi,
-            valorIpi,
-            temST,
-            valorIcmsSt,
-            valorTotal
           });
           
           return {
@@ -656,17 +644,21 @@ module.exports = {
             orcamento_codigo: id,
             produto_codigo: item.produto_codigo,
             quantidade,
-            valor_unitario: valorUnitario,
-            valor_total: valorTotal,
+            valor_unitario: arredondar(valorUnitario, 2),
+            valor_bruto: arredondar(valorBruto, 2),
+            valor_desconto: arredondar(valorDesconto, 2),
+            valor_liquido: arredondar(valorLiquido, 2),
+            valor_com_desconto: valorComDesconto.toFixed(2),
+            valor_total: arredondar(arredondar(valorComDesconto, 2) + arredondar(valorIpi, 2) + arredondar(valorIcmsSt, 2), 2),
             // Campos fiscais
-            desconto: desconto,
+            desconto: arredondar(desconto, 2),
             st_icms: dadosFiscais?.st_icms || '00',
-            aliq_icms: aliqIcms,
-            valor_icms: valorIcms,
-            icms_st: temST ? 'S' : 'N',
-            valor_icms_st: valorIcmsSt,
-            ipi: aliqIpi,
-            valor_ipi: valorIpi,
+            aliq_icms: arredondar(aliqIcms, 2),
+            valor_icms: arredondar(valorIcms, 2),
+            icms_st: valorIcmsSt > 0 ? 'S' : 'N',
+            valor_icms_st: arredondar(valorIcmsSt, 2),
+            ipi: arredondar(aliqIpi, 2),
+            valor_ipi: arredondar(valorIpi, 2),
             class_fiscal: dadosFiscais?.class_fiscal || '',
             ncm: dadosFiscais?.ncm || '',
             cod_origem_prod: dadosFiscais?.cod_origem_prod || '0',
@@ -674,7 +666,7 @@ module.exports = {
             dt_inc: new Date(),
             // Adicionar campos de unidade
             unidade: item.unidade || '',
-            is_unidade2: item.isUnidade2 === true ? true : false
+            is_unidade2: item.is_unidade2 === true ? true : false
           };
         }));
 
@@ -973,6 +965,10 @@ module.exports = {
           'orcamentos_itens.produto_codigo',
           'orcamentos_itens.quantidade',
           'orcamentos_itens.valor_unitario',
+          'orcamentos_itens.valor_bruto',
+          'orcamentos_itens.valor_desconto',
+          'orcamentos_itens.valor_liquido',
+          'orcamentos_itens.valor_com_desconto',
           'orcamentos_itens.valor_total',
           'orcamentos_itens.desconto',
           'orcamentos_itens.st_icms',
@@ -1016,10 +1012,10 @@ module.exports = {
       const totais = itensProcessados.reduce((acc, item) => {
         acc.valor_produtos += parseFloat(item.valor_bruto) || 0;
         acc.valor_descontos += parseFloat(item.valor_desconto) || 0;
-        acc.valor_liquido += parseFloat(item.valor_liquido) || 0;
+        acc.valor_liquido += parseFloat(item.valor_com_desconto) || 0;
         acc.valor_ipi += parseFloat(item.valor_ipi) || 0;
         acc.valor_st += parseFloat(item.valor_icms_st) || 0;
-        acc.valor_total += parseFloat(item.valor_total) || 0;
+        acc.valor_total += parseFloat(item.valor_com_desconto) || 0;
         return acc;
       }, {
         valor_produtos: 0,

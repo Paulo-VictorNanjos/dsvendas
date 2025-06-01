@@ -429,6 +429,21 @@ class FiscalRulesService {
         redIcms = regraIcms.red_icms || 0;
       }
 
+      // REGRA ESPECIAL CST 60: ICMS já retido anteriormente por substituição tributária
+      // Quando CST = 60, não deve ser feito novo cálculo de ICMS-ST
+      if (stIcms === '60') {
+        logger.info(`CST ${stIcms} detectado para produto ${codigoProduto} - ICMS já retido anteriormente por substituição tributária. Não calculando novo ICMS-ST.`);
+        return {
+          success: true,
+          temST: false,
+          stIcms: stIcms,
+          valorICMSST: 0,
+          valorFCPST: 0,
+          baseICMSST: 0,
+          mensagem: 'CST 60: ICMS já foi retido anteriormente por substituição tributária. Não há novo ICMS-ST a recolher.'
+        };
+      }
+
       // CORREÇÃO: Verificação de ST mais abrangente
       // 1) Se tem ST marcado explicitamente (icms_st='S'), sempre calcular ST
       const temSTporFlag = regraIcms.icms_st === 'S';

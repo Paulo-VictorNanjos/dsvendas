@@ -37,7 +37,7 @@ import {
   AccessTime
 } from '@mui/icons-material';
 import Carousel from 'react-material-ui-carousel';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RePieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, ComposedChart, Line } from 'recharts';
 import { orcamentosAPI, api } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -156,6 +156,7 @@ const Dashboard = () => {
   });
   
   const [chartData, setChartData] = useState([]);
+  const [dailyChartData, setDailyChartData] = useState([]);
   const [pieData, setPieData] = useState([]);
   const [banners, setBanners] = useState([
     {
@@ -802,46 +803,35 @@ const Dashboard = () => {
       const variacaoTotal = calcularVariacao(totalOrcamentosMesAtual, totalOrcamentosMesAnterior);
       const variacaoConversao = calcularVariacao(convertidosMesAtual, convertidosMesAnterior);
       
-      // 9. Preparar dados para o gráfico de barras (últimos 6 meses)
+      // 9. Preparar dados para o gráfico mensal
       const ultimosMeses = [];
       
-      for (let i = 5; i >= 0; i--) {
-        const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      for (let i = 11; i >= 0; i--) {
+        const data = new Date(hoje);
+        data.setMonth(hoje.getMonth() - i);
         ultimosMeses.push({
-          mes: data.toLocaleString('pt-BR', { month: 'short' }),
           mesNum: data.getMonth(),
-          ano: data.getFullYear()
+          ano: data.getFullYear(),
+          mes: data.toLocaleDateString('pt-BR', { month: 'long' })
         });
       }
-      
-      // Agrupar orçamentos por mês
+
+      // Preparar dados para o gráfico mensal
       const dadosPorMes = ultimosMeses.map(mesInfo => {
-        // Verificar se mesInfo é válido
-        if (!mesInfo || mesInfo.mesNum === undefined || mesInfo.ano === undefined) {
-          return {
-            mes: 'Desconhecido',
-            orcamentos: 0,
-            aprovados: 0,
-            convertidos: 0,
-            valor: 0
-          };
-        }
-        
-        const orcamentosMes = orcamentos.filter(orc => {
+        const vendasMes = orcamentos.filter(orc => {
           if (!orc || !orc.dt_orcamento) return false;
           try {
             const dataOrc = new Date(orc.dt_orcamento);
             return dataOrc.getMonth() === mesInfo.mesNum && 
                    dataOrc.getFullYear() === mesInfo.ano;
           } catch (err) {
-            console.error('Erro ao processar data do orçamento:', err);
+            console.error('Erro ao processar data da venda:', err);
             return false;
           }
         });
-        
-        // Calcular valor total dos orçamentos convertidos no mês
+
         let valorMes = 0;
-        orcamentosMes
+        vendasMes
           .filter(orc => orc && orc.status === 'CONVERTIDO')
           .forEach(orc => {
             if (orc && orc.totais && orc.totais.valor_total) {
@@ -851,15 +841,73 @@ const Dashboard = () => {
               }
             }
           });
-        
+
         return {
           mes: mesInfo.mes ? mesInfo.mes.charAt(0).toUpperCase() + mesInfo.mes.slice(1) : 'Desconhecido',
-          orcamentos: orcamentosMes.length,
-          aprovados: orcamentosMes.filter(orc => orc && orc.status === 'APROVADO').length,
-          convertidos: orcamentosMes.filter(orc => orc && orc.status === 'CONVERTIDO').length,
-          valor: valorMes
+          entradas: valorMes,
+          saidas: 0, // Você pode ajustar isso conforme sua lógica de negócio
+          saldo: valorMes
         };
       });
+
+      // Preparar dados para o gráfico diário
+      const ultimosDias = [];
+      
+      for (let i = 29; i >= 0; i--) {
+        const data = new Date(hoje);
+        data.setDate(hoje.getDate() - i);
+        ultimosDias.push({
+          data: data,
+          dia: data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        });
+      }
+
+      // Preparar dados para o gráfico diário
+      const dadosPorDia = ultimosDias.map(diaInfo => {
+        const vendasDia = orcamentos.filter(orc => {
+          if (!orc || !orc.dt_orcamento) return false;
+          try {
+            const dataOrc = new Date(orc.dt_orcamento);
+            return dataOrc.toDateString() === diaInfo.data.toDateString();
+          } catch (err) {
+            console.error('Erro ao processar data da venda:', err);
+            return false;
+          }
+        });
+
+        let entradas = 0;
+        let saidas = 0;
+        
+        vendasDia.forEach(orc => {
+          if (orc && orc.totais && orc.totais.valor_total) {
+            const valor = parseFloat(orc.totais.valor_total);
+            if (!isNaN(valor)) {
+              if (orc.status === 'CONVERTIDO') {
+                entradas += valor;
+              } else if (orc.status === 'CANCELADO') {
+                saidas += valor;
+              }
+            }
+          }
+        });
+
+        return {
+          dia: diaInfo.dia,
+          entradas,
+          saidas,
+          saldo: entradas - saidas
+        };
+      });
+
+      // Calcular saldo acumulado para dados diários
+      let saldoAcumulado = 0;
+      dadosPorDia.forEach(dia => {
+        saldoAcumulado += (dia.entradas - dia.saidas);
+        dia.saldo = saldoAcumulado;
+      });
+
+      setChartData(dadosPorMes);
+      setDailyChartData(dadosPorDia);
       
       // 10. Preparar dados para o gráfico de pizza (status dos orçamentos)
       const dadosPizza = [
@@ -885,7 +933,6 @@ const Dashboard = () => {
         variacaoConversao
       });
       
-      setChartData(dadosPorMes);
       setPieData(dadosPizza);
       
     } catch (error) {
@@ -1294,12 +1341,12 @@ const Dashboard = () => {
       
       {/* Gráficos */}
       <Grid container spacing={3}>
-        {/* Gráfico de Barras */}
-        <Grid item xs={12} md={8}>
+        {/* Gráfico Mensal */}
+        <Grid item xs={12}>
           <ChartContainer sx={{ position: 'relative', minHeight: 400 }}>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
               <TrendingUp sx={{ mr: 1.5, color: 'primary.main' }} />
-              Evolução de Orçamentos por Mês
+              Evolução Mensal de Vendas
             </Typography>
             <Box sx={{ height: 350 }}>
               {loading ? (
@@ -1308,21 +1355,18 @@ const Dashboard = () => {
                 </Box>
               ) : chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
+                  <ComposedChart
                     data={chartData}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="mes" />
                     <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `R$ ${value/1000}k`} />
+                    <YAxis yAxisId="right" orientation="right" />
                     <Tooltip 
                       formatter={(value, name) => {
-                        if (name === 'valor') {
-                          return [formatCurrency(value), 'Valor Convertido'];
-                        }
-                        return [value, name === 'orcamentos' ? 'Orçamentos' : 
-                                      name === 'aprovados' ? 'Aprovados' : 'Convertidos'];
+                        return [formatCurrency(value), name === 'entradas' ? 'Entradas' : 
+                                           name === 'saidas' ? 'Saídas' : 'Saldo'];
                       }}
                       contentStyle={{ 
                         borderRadius: '8px', 
@@ -1331,11 +1375,10 @@ const Dashboard = () => {
                       }} 
                     />
                     <Legend />
-                    <Bar yAxisId="left" dataKey="orcamentos" name="Orçamentos" fill="#FF9800" radius={[4, 4, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="aprovados" name="Aprovados" fill="#4CAF50" radius={[4, 4, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="convertidos" name="Convertidos" fill="#2196F3" radius={[4, 4, 0, 0]} />
-                    <Bar yAxisId="right" dataKey="valor" name="Valor (R$)" fill="#9C27B0" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    <Bar yAxisId="left" dataKey="entradas" name="Entradas" fill="#2196F3" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="saidas" name="Saídas" fill="#F44336" radius={[4, 4, 0, 0]} />
+                    <Line yAxisId="right" type="monotone" dataKey="saldo" name="Saldo" stroke="#4CAF50" strokeWidth={2} dot={false} />
+                  </ComposedChart>
                 </ResponsiveContainer>
               ) : (
                 <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
@@ -1348,7 +1391,58 @@ const Dashboard = () => {
             </Box>
           </ChartContainer>
         </Grid>
-        
+
+        {/* Gráfico Diário */}
+        <Grid item xs={12}>
+          <ChartContainer sx={{ position: 'relative', minHeight: 400 }}>
+            <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+              <TrendingUp sx={{ mr: 1.5, color: 'primary.main' }} />
+              Evolução Diária de Vendas
+            </Typography>
+            <Box sx={{ height: 350 }}>
+              {loading ? (
+                <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <CircularProgress size={40} />
+                </Box>
+              ) : dailyChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={dailyChartData}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="dia" />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <Tooltip 
+                      formatter={(value, name) => {
+                        return [formatCurrency(value), name === 'entradas' ? 'Entradas' : 
+                                           name === 'saidas' ? 'Saídas' : 'Saldo'];
+                      }}
+                      contentStyle={{ 
+                        borderRadius: '8px', 
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                        border: 'none'
+                      }} 
+                    />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="entradas" name="Entradas" fill="#2196F3" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="saidas" name="Saídas" fill="#F44336" radius={[4, 4, 0, 0]} />
+                    <Line yAxisId="right" type="monotone" dataKey="saldo" name="Saldo" stroke="#4CAF50" strokeWidth={2} dot={false} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                  <AccessTime sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+                  <Typography variant="body1" color="text.secondary">
+                    Não há dados suficientes para exibir o gráfico
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </ChartContainer>
+        </Grid>
+
         {/* Gráfico de Pizza */}
         <Grid item xs={12} md={4}>
           <ChartContainer sx={{ position: 'relative', minHeight: 400 }}>

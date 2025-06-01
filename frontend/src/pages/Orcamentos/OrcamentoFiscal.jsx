@@ -117,10 +117,9 @@ const arredondar = (valor, casas = 2) => {
     return 0;
   }
   
-  // Converter para string com número fixo de casas decimais e converter de volta para número
-  // Isso garante que não haja valores como 235.10000000000002
-  const valorString = numeroValido.toFixed(casas);
-  return parseFloat(valorString);
+  // Usar Math.round com multiplicação/divisão para arredondamento preciso
+  const fator = Math.pow(10, casas);
+  return Math.round((numeroValido + Number.EPSILON) * fator) / fator;
 };
 
 // Formatador de números com arredondamento seguro
@@ -480,6 +479,14 @@ const TelaVendas = () => {
   const [valorUnitarioTemp, setValorUnitarioTemp] = useState(0);
   const [descontoTemp, setDescontoTemp] = useState(0);
   
+  // Estados para validação de desconto
+  const [descontoValidacao, setDescontoValidacao] = useState({
+    loading: false,
+    maxPermitido: 0,
+    descontoAjustado: false,
+    mensagem: ''
+  });
+  
   // Estado para controlar a edição de item existente
   const [itemEditandoIndex, setItemEditandoIndex] = useState(null);
   const [modoEdicaoItem, setModoEdicaoItem] = useState(false);
@@ -630,8 +637,54 @@ const TelaVendas = () => {
         
         // Se o orçamento tiver itens, atualizá-los
         if (orcamento.itens && orcamento.itens.length > 0) {
-          console.log('Itens do orçamento:', orcamento.itens);
-          setItensOrcamento(orcamento.itens);
+          console.log('======= CARREGANDO ITENS DO ORÇAMENTO =======');
+          console.log('Itens recebidos do backend:', orcamento.itens.length);
+          
+          const itensProcessados = orcamento.itens.map((item, index) => {
+            const valorUnitarioBackend = parseFloat(item.valor_unitario) || 0;
+            const descontoPercentual = parseFloat(item.desconto) || 0;
+            let valorUnitarioFinalCalculado = valorUnitarioBackend;
+
+            if (descontoPercentual > 0) {
+              // Se o backend já mandou valor_unitario com desconto, usamos ele.
+              // Caso contrário, calculamos.
+              // Idealmente, o backend já manda o valor_unitario correto (com desconto aplicado se houver)
+              // e também o valor_unitario_original (sem desconto)
+              // Por agora, vamos assumir que `item.valor_unitario` é o valor COM desconto se `item.valor_unitario_final` não existir.
+              // E que o `item.valor_bruto / item.quantidade` seria o original.
+              valorUnitarioFinalCalculado = parseFloat(item.valor_unitario_final) || (valorUnitarioBackend * (1 - descontoPercentual / 100));
+              valorUnitarioFinalCalculado = arredondar(valorUnitarioFinalCalculado, 2);
+            }
+
+            console.log(`ITEM ${index + 1} PROCESSADO PARA FRONTEND:`, {
+              codigo: item.produto_codigo,
+              quantidade: item.quantidade,
+              valor_unitario_original_display: arredondar(parseFloat(item.valor_bruto) / parseFloat(item.quantidade), 2), // Para exibir riscado
+              valor_unitario_final_display: valorUnitarioFinalCalculado, // Para exibir como valor unitário com desconto
+              valor_com_desconto_item: parseFloat(item.valor_com_desconto) || (parseFloat(item.quantidade) * valorUnitarioFinalCalculado)
+            });
+
+            return {
+              ...item,
+              // Garantir que valor_unitario seja o original SEMPRE para consistência no display
+              valor_unitario: parseFloat(item.valor_bruto) / parseFloat(item.quantidade),
+              valor_unitario_final: valorUnitarioFinalCalculado, // Este é o valor unitário com desconto
+              valor_com_desconto: parseFloat(item.valor_com_desconto) || (parseFloat(item.quantidade) * valorUnitarioFinalCalculado), // Este é o VALOR TOTAL do item com desconto
+              // Certificar que outros campos numéricos são floats
+              quantidade: parseFloat(item.quantidade) || 0,
+              valor_bruto: parseFloat(item.valor_bruto) || 0,
+              valor_desconto: parseFloat(item.valor_desconto) || 0,
+              valor_liquido: parseFloat(item.valor_liquido) || 0, // valor_liquido deve ser o valor_com_desconto
+              valor_ipi: parseFloat(item.valor_ipi) || 0,
+              valor_icms_st: parseFloat(item.valor_icms_st) || 0,
+              aliq_icms: parseFloat(item.aliq_icms) || 0,
+              aliq_ipi: parseFloat(item.aliq_ipi) || 0,
+            };
+          });
+          
+          console.log('Definindo itens processados no estado...');
+          setItensOrcamento(itensProcessados);
+          console.log('======= FIM CARREGAMENTO ITENS =======');
         }
         
         // Se o orçamento tiver vendedor, carregá-lo primeiro e seus clientes vinculados
@@ -698,18 +751,26 @@ const TelaVendas = () => {
           
         // Atualizar totais
         if (orcamento.totais) {
-          console.log('Totais do orçamento:', orcamento.totais);
-          setTotais({
+          console.log('======= CARREGANDO TOTAIS DO ORÇAMENTO =======');
+          console.log('Totais recebidos do backend:', orcamento.totais);
+          
+          const totaisCarregados = {
             valorProdutos: orcamento.totais.valor_produtos || 0,
             valorDesconto: orcamento.totais.valor_descontos || 0,
             valorComDesconto: orcamento.totais.valor_liquido || 0,
             valorIpi: orcamento.totais.valor_ipi || 0,
             valorSt: orcamento.totais.valor_st || 0,
             valorTotal: orcamento.totais.valor_total || 0
-          });
+          };
+          
+          console.log('Totais processados para o estado:', totaisCarregados);
+          setTotais(totaisCarregados);
+          console.log('======= FIM CARREGAMENTO TOTAIS =======');
         } else if (orcamento.itens && orcamento.itens.length > 0) {
           // Se não tiver totais, mas tiver itens, calcular totais
+          console.log('⚠️ ATENÇÃO: Orçamento sem totais - RECALCULANDO A PARTIR DOS ITENS');
           atualizarTotais(orcamento.itens);
+          console.log('RECÁLCULO AUTOMÁTICO FINALIZADO');
         }
         
         // Log para verificar se os dados foram carregados corretamente
@@ -786,6 +847,14 @@ const TelaVendas = () => {
     
     if (produtoTemp) {
       buscarDadosFiscais();
+    } else {
+      // Limpar estado de validação quando não há produto selecionado
+      setDescontoValidacao({
+        loading: false,
+        maxPermitido: 0,
+        descontoAjustado: false,
+        mensagem: ''
+      });
     }
   }, [produtoTemp]);
   
@@ -938,6 +1007,77 @@ const TelaVendas = () => {
     return temCNPJ && temIE;
   };
   
+  // Função para validar desconto máximo permitido
+  const validarDesconto = async (productId, requestedDiscount, unitPrice) => {
+    if (!productId || requestedDiscount === 0) {
+      setDescontoValidacao({
+        loading: false,
+        maxPermitido: 0,
+        descontoAjustado: false,
+        mensagem: ''
+      });
+      return requestedDiscount;
+    }
+
+    setDescontoValidacao(prev => ({ ...prev, loading: true }));
+
+    try {
+      const response = await orcamentosAPI.aplicarDesconto(productId, requestedDiscount, unitPrice);
+      
+      if (response.data && response.data.success) {
+        const result = response.data.data;
+        
+        setDescontoValidacao({
+          loading: false,
+          maxPermitido: result.maxAllowedDiscount,
+          descontoAjustado: result.appliedDiscount !== requestedDiscount,
+          mensagem: result.message || ''
+        });
+
+        // Se o desconto foi ajustado, mostrar notificação
+        if (result.appliedDiscount !== requestedDiscount && result.message) {
+          exibirNotificacao(result.message, 'warning');
+        }
+
+        return result.appliedDiscount;
+      }
+    } catch (error) {
+      console.error('Erro ao validar desconto:', error);
+      setDescontoValidacao({
+        loading: false,
+        maxPermitido: 0,
+        descontoAjustado: false,
+        mensagem: 'Erro ao validar desconto'
+      });
+      exibirNotificacao('Erro ao validar desconto máximo permitido', 'error');
+    }
+
+    return requestedDiscount;
+  };
+  
+  // Função para lidar com mudança do desconto com validação
+  const handleDescontoChange = async (novoDesconto) => {
+    // Limitar o desconto entre 0 e 100
+    const descontoLimitado = Math.min(100, Math.max(0, parseFloat(novoDesconto) || 0));
+    
+    // Atualizar o estado imediatamente para responsividade da UI
+    setDescontoTemp(descontoLimitado);
+    
+    // Se temos produto selecionado, validar o desconto
+    if (produtoTemp && descontoLimitado > 0) {
+      const descontoValidado = await validarDesconto(
+        produtoTemp.codigo, 
+        descontoLimitado, 
+        valorUnitarioTemp
+      );
+      
+      // Se o desconto foi ajustado, atualizar o campo
+      if (descontoValidado !== descontoLimitado) {
+        setDescontoTemp(descontoValidado);
+      }
+    }
+  };
+  
   // Função para adicionar um item ao orçamento
   const adicionarItem = async () => {
     if (!produtoTemp) {
@@ -953,6 +1093,17 @@ const TelaVendas = () => {
     if (!valorUnitarioTemp || valorUnitarioTemp <= 0) {
       setError('O valor unitário deve ser maior que zero');
       return;
+    }
+    
+    // Validar desconto se houver
+    let descontoFinal = descontoTemp;
+    if (descontoTemp > 0) {
+      descontoFinal = await validarDesconto(produtoTemp.codigo, descontoTemp, valorUnitarioTemp);
+      
+      // Atualizar o campo se o desconto foi ajustado
+      if (descontoFinal !== descontoTemp) {
+        setDescontoTemp(descontoFinal);
+      }
     }
     
     try {
@@ -1104,7 +1255,7 @@ const TelaVendas = () => {
         produto_codigo: produtoTemp.codigo,
         quantidade: quantidadeTemp,
         valor_unitario: valorUnitarioTemp,
-        desconto: descontoTemp,
+        desconto: descontoFinal,
         isImportado // Adicionar flag de produto importado ao item
       };
       
@@ -1220,7 +1371,7 @@ const TelaVendas = () => {
           }
           
           // Verificar CST nos dados fiscais
-          const cstsComST = ['10', '30', '60', '70', '201', '202', '203'];
+          const cstsComST = ['10', '30', '60', '060', '70', '201', '202', '203'];
           if (cstsComST.includes(dadosFiscais.st_icms)) {
             deveCalcularST = true;
             console.log('ST detectado por CST', dadosFiscais.st_icms, 'nos dados fiscais');
@@ -1233,18 +1384,18 @@ const TelaVendas = () => {
         try {
           console.log('Tentando calcular ICMS-ST para', produtoTemp.codigo);
           
-          // Calcular o valor do desconto corretamente usando arredondamento
-          const valorProdutoSemDesconto = arredondar(valorUnitarioTemp * quantidadeTemp, 4);
-          const valorDescontoCalculado = arredondar((valorProdutoSemDesconto * descontoTemp) / 100, 4);
-          const valorComDesconto = arredondar(valorProdutoSemDesconto - valorDescontoCalculado, 4);
+          // Calcular o valor do desconto corretamente SEM arredondamento prematuro
+          const valorProdutoSemDesconto = valorUnitarioTemp * quantidadeTemp;
+          const valorDescontoCalculado = (valorProdutoSemDesconto * descontoFinal) / 100;
+          const valorComDesconto = valorProdutoSemDesconto - valorDescontoCalculado;
           
           const icmsStResponse = await fiscalAPI.calcularIcmsST({
             codigoProduto: produtoTemp.codigo,
             ufDestino: clienteSelecionado.uf,
-            valorProduto: valorProdutoSemDesconto, // Valor bruto arredondado
-            valorIpi: arredondar(dadosTributos.valor_ipi, 4),
+            valorProduto: valorProdutoSemDesconto,
+            valorIpi: dadosTributos.valor_ipi,
             tipoContribuinte: determinarContribuinteCliente(clienteSelecionado),
-            valorDesconto: valorDescontoCalculado, // Valor do desconto arredondado
+            valorDesconto: valorDescontoCalculado,
             isImportado: isImportado // Adicionar flag de produto importado
           });
           
@@ -1253,7 +1404,7 @@ const TelaVendas = () => {
             codigoProduto: produtoTemp.codigo,
             valorProduto: valorProdutoSemDesconto,
             valorDesconto: valorDescontoCalculado,
-            descontoPercentual: descontoTemp,
+            descontoPercentual: descontoFinal,
             valorFinal: valorComDesconto,
             isImportado
           });
@@ -1281,6 +1432,13 @@ const TelaVendas = () => {
               dadosTributos.valor_icms_st = 0;
               console.log('Produto não tem ST, garantindo valor zerado.');
             }
+
+            // NOVA REGRA: Se CST ICMS for 060, zerar ICMS-ST pois já foi recolhido
+            if (infoST && infoST.detalhes && infoST.detalhes.cstIcms === '060') {
+              console.log('CST ICMS é 060, ICMS-ST já recolhido. Zerando valor_icms_st.');
+              dadosTributos.valor_icms_st = 0;
+            }
+
           }
         } catch (stError) {
           console.error('Erro ao calcular ICMS-ST específico:', stError);
@@ -1293,43 +1451,118 @@ const TelaVendas = () => {
         // Se não temos cliente, calcular apenas valores básicos
         // Usar alíquotas padrão para a UF de SP
         dadosTributos.aliq_icms = parseFloat(dadosFiscais.aliq_icms) || 18; // Padrão para SP
-        dadosTributos.valor_icms = (valorUnitarioTemp * quantidadeTemp * dadosTributos.aliq_icms) / 100;
+        // Calcular sobre valor líquido (bruto - desconto), não sobre valor unitário
+        const valorBrutoCalculo = valorUnitarioTemp * quantidadeTemp;
+        const valorDescontoCalculo = (valorBrutoCalculo * descontoFinal) / 100;
+        const valorLiquidoCalculo = valorBrutoCalculo - valorDescontoCalculo;
+        
+        
+        dadosTributos.valor_icms = (valorLiquidoCalculo * dadosTributos.aliq_icms) / 100;
         
         if (dadosFiscais.aliq_ipi) {
           dadosTributos.aliq_ipi = parseFloat(dadosFiscais.aliq_ipi);
-          dadosTributos.valor_ipi = (valorUnitarioTemp * quantidadeTemp * dadosTributos.aliq_ipi) / 100;
+          dadosTributos.valor_ipi = (valorLiquidoCalculo * dadosTributos.aliq_ipi) / 100;
         }
         
-        console.log('Cálculos fiscais com valores padrão (cliente não selecionado):', dadosTributos);
+        console.log('Cálculos fiscais com valores padrão (cliente não selecionado):', {
+          ...dadosTributos,
+          valorBrutoCalculo,
+          valorDescontoCalculo,
+          valorLiquidoCalculo
+        });
       }
       
       console.log('Dados de tributos finais calculados:', dadosTributos);
       
-      // Calcular valores
-      const valorBruto = quantidadeTemp * valorUnitarioTemp;
-      const valorDesconto = (valorBruto * descontoTemp) / 100;
-      const valorLiquido = valorBruto - valorDesconto;
+      // ====== SEQUÊNCIA CORRIGIDA PARA SEGUIR A LÓGICA DO ERP ======
+      // 1. Quantidade (já definida)
+      // 2. Valor unitário original
+      const valorUnitarioOriginal = valorUnitarioTemp;
+      
+      // 3. Aplicar desconto ao valor unitário se houver desconto E ARREDONDAR
+      let valorUnitarioFinal = valorUnitarioOriginal;
+      if (descontoFinal > 0) {
+        // Se há desconto, calcular o valor unitário com desconto aplicado
+        valorUnitarioFinal = valorUnitarioOriginal * (1 - descontoFinal / 100);
+        valorUnitarioFinal = arredondar(valorUnitarioFinal, 2); // CRÍTICO: Arredondar aqui
+      }
+      
+      // 4. Calcular valores baseados na lógica do ERP
+      const valorBruto = quantidadeTemp * valorUnitarioOriginal;
+      const valorDesconto = (valorBruto * descontoFinal) / 100;
+      const valorLiquido = quantidadeTemp * valorUnitarioFinal; // Usar valor unitário final arredondado
+      const valorComDesconto = arredondar(valorLiquido, 2); // NOVO: Garantir arredondamento correto
+      
+      // Validar que os cálculos batem
+      const valorLiquidoAlternativo = valorBruto - valorDesconto;
+      console.log('Comparação de cálculos:', {
+        metodoPrincipal: {
+          valorUnitarioFinal,
+          valorLiquido,
+          valorComDesconto
+        },
+        metodoAlternativo: {
+          valorLiquidoAlternativo: arredondar(valorLiquidoAlternativo, 2)
+        },
+        diferenca: arredondar(valorLiquido - valorLiquidoAlternativo, 4)
+      });
+      
+      console.log('🔧 CÁLCULO SEGUINDO LÓGICA ERP CORRETA:', {
+        quantidade: quantidadeTemp,
+        valorUnitarioOriginal,
+        descontoPercentual: descontoFinal,
+        valorUnitarioFinalAntes: valorUnitarioOriginal * (1 - descontoFinal / 100),
+        valorUnitarioFinalArredondado: valorUnitarioFinal,
+        valorBruto: arredondar(valorBruto, 2),
+        valorDesconto: arredondar(valorDesconto, 2),
+        valorLiquido: arredondar(valorLiquido, 2),
+        valorComDesconto
+      });
       
       // CORREÇÃO PARA GOIÁS: Forçar sem ST e alíquota de 7%
       if (clienteSelecionado && clienteSelecionado.uf === 'GO') {
         temST = false;
         dadosTributos.valor_icms_st = 0;
         dadosTributos.aliq_icms = 7;
-        dadosTributos.valor_icms = (valorLiquido * 7) / 100;
+        dadosTributos.valor_icms = arredondar(((valorBruto - valorDesconto) * 7) / 100, 2);
         console.log('CORREÇÃO APLICADA: Produto para Goiás (GO) - Sem ST, ICMS 7%');
       }
+      
+      // DEBUG: Log detalhado dos valores calculados antes de criar o item
+      console.log('=== DEBUG VALORES ANTES DE CRIAR ITEM ===');
+      console.log('Valores ERP calculados:', {
+        quantidade: quantidadeTemp,
+        valorUnitarioOriginal,
+        valorUnitarioFinal,
+        descontoFinal,
+        valorBruto,
+        valorDesconto,
+        valorLiquido
+      });
+      console.log('Tributos calculados:', {
+        aliq_icms: dadosTributos.aliq_icms,
+        aliq_ipi: dadosTributos.aliq_ipi,
+        valor_icms: dadosTributos.valor_icms,
+        valor_ipi: dadosTributos.valor_ipi,
+        valor_icms_st: dadosTributos.valor_icms_st
+      });
+      console.log('Base de cálculo para IPI:', valorLiquidoAlternativo);
+      console.log('IPI calculado manualmente:', (valorLiquidoAlternativo * dadosTributos.aliq_ipi) / 100);
+      console.log('=========================================');
       
       // Preparar item para adicionar à lista
       const novoItem = {
         produto: produtoTemp,
         produto_codigo: produtoTemp.codigo,
-        produto_descricao: produtoTemp.nome,
+        produto_descricao: produtoTemp.nome || produtoTemp.descricao,
         quantidade: quantidadeTemp,
-        valor_unitario: valorUnitarioTemp,
-        desconto: descontoTemp,
+        valor_unitario: valorUnitarioOriginal, // Valor original sem desconto
+        valor_unitario_final: valorUnitarioFinal, // Valor final com desconto
         valor_bruto: valorBruto,
         valor_desconto: valorDesconto,
         valor_liquido: valorLiquido,
+        valor_com_desconto: valorComDesconto, // Nova propriedade - agora com arredondamento correto
+        desconto: descontoFinal,
         aliq_icms: dadosTributos.aliq_icms,
         aliq_ipi: dadosTributos.aliq_ipi,
         valor_icms: dadosTributos.valor_icms,
@@ -1367,6 +1600,14 @@ const TelaVendas = () => {
       setDescontoTemp(0);
       setInfoST(null);
       
+      // Limpar estado de validação de desconto
+      setDescontoValidacao({
+        loading: false,
+        maxPermitido: 0,
+        descontoAjustado: false,
+        mensagem: ''
+      });
+      
       // Atualizar totais
       atualizarTotais([...itensOrcamento, novoItem]);
       
@@ -1398,15 +1639,37 @@ const TelaVendas = () => {
         // Atualizar quantidade
         itemAtualizado.quantidade = novaQuantidade;
         
-        // Recalcular valores
-        itemAtualizado.valor_bruto = novaQuantidade * parseFloat(itemAtualizado.valor_unitario);
-        itemAtualizado.valor_desconto = (itemAtualizado.valor_bruto * parseFloat(itemAtualizado.desconto)) / 100;
-        itemAtualizado.valor_liquido = itemAtualizado.valor_bruto - itemAtualizado.valor_desconto;
+        // Recalcular valores seguindo lógica do ERP
+        const valorUnitarioOriginal = parseFloat(itemAtualizado.valor_unitario);
+        const descontoPercentual = parseFloat(itemAtualizado.desconto);
         
-        // Recalcular impostos
-        const baseCalculo = itemAtualizado.valor_liquido;
-        itemAtualizado.valor_icms = (baseCalculo * parseFloat(itemAtualizado.aliq_icms)) / 100;
-        itemAtualizado.valor_ipi = (baseCalculo * parseFloat(itemAtualizado.aliq_ipi)) / 100;
+        // Calcular valor unitário final se houver desconto
+        let valorUnitarioFinal = valorUnitarioOriginal;
+        if (descontoPercentual > 0) {
+          valorUnitarioFinal = valorUnitarioOriginal * (1 - descontoPercentual / 100);
+          valorUnitarioFinal = arredondar(valorUnitarioFinal, 2); // CRÍTICO: Arredondar aqui
+        }
+        
+        itemAtualizado.valor_bruto = novaQuantidade * valorUnitarioOriginal;
+        itemAtualizado.valor_desconto = (itemAtualizado.valor_bruto * descontoPercentual) / 100;
+        itemAtualizado.valor_liquido = novaQuantidade * valorUnitarioFinal;
+        itemAtualizado.valor_unitario_final = valorUnitarioFinal; // Preservar valor final
+        itemAtualizado.valor_com_desconto = arredondar(itemAtualizado.valor_liquido, 2); // NOVO: Garantir arredondamento correto
+        
+        console.log('Recalculando item somado seguindo lógica ERP:', {
+          novaQuantidade,
+          valorUnitarioOriginal,
+          descontoPercentual,
+          valorUnitarioFinal,
+          valorBruto: itemAtualizado.valor_bruto,
+          valorDesconto: itemAtualizado.valor_desconto,
+          valorLiquido: itemAtualizado.valor_liquido
+        });
+        
+        // Recalcular impostos usando valor líquido correto (bruto - desconto)
+        const baseCalculoImpostos = itemAtualizado.valor_bruto - itemAtualizado.valor_desconto;
+        itemAtualizado.valor_icms = (baseCalculoImpostos * parseFloat(itemAtualizado.aliq_icms)) / 100;
+        itemAtualizado.valor_ipi = (baseCalculoImpostos * parseFloat(itemAtualizado.aliq_ipi)) / 100;
         
         // Recalcular ST proporcionalmente
         if (itemAtualizado.temST && parseFloat(duplicateItem.valor_icms_st) > 0) {
@@ -1612,16 +1875,38 @@ const TelaVendas = () => {
         ? (produtoTemp.unidade2 || produtoTemp.unidade) 
         : produtoTemp.unidade;
       
-      // 5. Calcular valores básicos
-      const valorBruto = arredondar(quantidadeTemp * valorUnitarioTemp, 2);
+      // 5. Calcular valores básicos seguindo lógica do ERP
+      // Valor unitário original (o que foi digitado)
+      const valorUnitarioOriginal = valorUnitarioTemp;
+      
+      // Aplicar desconto ao valor unitário se houver desconto
+      let valorUnitarioFinal = valorUnitarioOriginal;
+      if (descontoTemp > 0) {
+        valorUnitarioFinal = valorUnitarioOriginal * (1 - descontoTemp / 100);
+      }
+      
+      const valorBruto = arredondar(quantidadeTemp * valorUnitarioOriginal, 2);
       const valorDesconto = arredondar((valorBruto * descontoTemp) / 100, 2);
-      const valorLiquido = arredondar(valorBruto - valorDesconto, 2);
+      const valorLiquido = arredondar(quantidadeTemp * valorUnitarioFinal, 2);
+      const valorComDesconto = arredondar(valorLiquido, 2); // NOVO: Garantir arredondamento correto
+      
+      console.log('🔧 CÁLCULO ATUALIZAÇÃO SEGUINDO LÓGICA ERP CORRETA:', {
+        quantidade: quantidadeTemp,
+        valorUnitarioOriginal,
+        descontoPercentual: descontoTemp,
+        valorUnitarioFinalAntes: valorUnitarioOriginal * (1 - descontoTemp / 100),
+        valorUnitarioFinalArredondado: valorUnitarioFinal,
+        valorBruto,
+        valorDesconto,
+        valorLiquido,
+        valorComDesconto
+      });
       
       // 6. Preparar item temporário para cálculo de tributos
       const itemTemp = {
         produto_codigo: produtoTemp.codigo,
         quantidade: quantidadeTemp,
-        valor_unitario: valorUnitarioTemp,
+        valor_unitario: valorUnitarioOriginal, // Usar valor original
         desconto: descontoTemp,
         isImportado
       };
@@ -1658,11 +1943,11 @@ const TelaVendas = () => {
             produto_codigo: produtoTemp.codigo,
             uf_cliente: clienteSelecionado.uf,
             tipo_cliente: tipoContribuinte,
-            valor_unitario: valorUnitarioTemp,
+            valor_unitario: valorUnitarioOriginal, // Usar valor original
             quantidade: quantidadeTemp,
             desconto: descontoTemp,
             valor_bruto: valorBruto,
-            valor_liquido: valorLiquido,
+            valor_liquido: valorBruto - valorDesconto, // Usar valor líquido correto (bruto - desconto)
             isImportado
           };
           
@@ -1680,32 +1965,36 @@ const TelaVendas = () => {
             temST = false;
             dadosTributos.valor_icms_st = 0;
             dadosTributos.aliq_icms = 7;
-            dadosTributos.valor_icms = arredondar((valorLiquido * 7) / 100, 2);
+            dadosTributos.valor_icms = arredondar(((valorBruto - valorDesconto) * 7) / 100, 2);
             console.log('CORREÇÃO APLICADA: Produto para Goiás (GO) - Sem ST, ICMS 7%');
           }
         } catch (error) {
           console.error('Erro ao calcular tributos:', error);
           // Usar cálculo básico em caso de erro
-          dadosTributos.valor_icms = arredondar((valorLiquido * dadosTributos.aliq_icms) / 100, 2);
-          dadosTributos.valor_ipi = arredondar((valorLiquido * dadosTributos.aliq_ipi) / 100, 2);
+          const valorLiquidoCalculo = valorBruto - valorDesconto;
+          dadosTributos.valor_icms = arredondar((valorLiquidoCalculo * dadosTributos.aliq_icms) / 100, 2);
+          dadosTributos.valor_ipi = arredondar((valorLiquidoCalculo * dadosTributos.aliq_ipi) / 100, 2);
         }
       } else {
         // Cálculo básico se não tiver cliente ou dados fiscais
-        dadosTributos.valor_icms = arredondar((valorLiquido * dadosTributos.aliq_icms) / 100, 2);
-        dadosTributos.valor_ipi = arredondar((valorLiquido * dadosTributos.aliq_ipi) / 100, 2);
+        const valorLiquidoCalculo = valorBruto - valorDesconto;
+        dadosTributos.valor_icms = arredondar((valorLiquidoCalculo * dadosTributos.aliq_icms) / 100, 2);
+        dadosTributos.valor_ipi = arredondar((valorLiquidoCalculo * dadosTributos.aliq_ipi) / 100, 2);
       }
       
       // 8. Criar o item atualizado
       const itemAtualizado = {
         produto: produtoTemp,
         produto_codigo: produtoTemp.codigo,
-        produto_descricao: produtoTemp.nome,
+        produto_descricao: produtoTemp.nome || produtoTemp.descricao,
         quantidade: quantidadeTemp,
-        valor_unitario: valorUnitarioTemp,
+        valor_unitario: valorUnitarioOriginal, // SALVAR O VALOR ORIGINAL
+        valor_unitario_final: valorUnitarioFinal, // VALOR COM DESCONTO APLICADO
         desconto: descontoTemp,
         valor_bruto: valorBruto,
         valor_desconto: valorDesconto,
         valor_liquido: valorLiquido,
+        valor_com_desconto: valorComDesconto, // Nova propriedade - agora com arredondamento correto
         aliq_icms: dadosTributos.aliq_icms,
         aliq_ipi: dadosTributos.aliq_ipi,
         valor_icms: dadosTributos.valor_icms,
@@ -1742,7 +2031,7 @@ const TelaVendas = () => {
   
   // Função para atualizar os totais do orçamento
   const atualizarTotais = (itens) => {
-    // Inicializar totais
+    // Inicializar totais com precisão total
     let valorProdutos = 0;
     let valorDesconto = 0;
     let valorComDesconto = 0;
@@ -1750,10 +2039,13 @@ const TelaVendas = () => {
     let valorSt = 0;
     let valorTotal = 0;
     
-    console.log('Atualizando totais para', itens.length, 'itens');
+    console.log('======= DEBUG DETALHADO ATUALIZAR TOTAIS =======');
+    console.log('Total de itens para processar:', itens.length);
+    console.log('Timestamp:', new Date().toISOString());
     
     // Se não houver itens, zerar os totais
     if (!itens || itens.length === 0) {
+      console.log('ATENÇÃO: Sem itens para calcular totais - zerando tudo');
       setTotais({
         valorProdutos: 0,
         valorDesconto: 0,
@@ -1765,66 +2057,138 @@ const TelaVendas = () => {
       return;
     }
     
-    // Calcular valores
+    // Calcular valores mantendo precisão total
     itens.forEach((item, index) => {
-      // Garantir que todos os valores sejam numéricos e arredondados corretamente
-      const valorBruto = arredondar(parseFloat(item.valor_bruto) || 0, 4);
-      const valorDescItem = arredondar(parseFloat(item.valor_desconto) || 0, 4);
-      const valorIpiItem = arredondar(parseFloat(item.valor_ipi) || 0, 4);
-      const valorStItem = arredondar(parseFloat(item.valor_icms_st) || 0, 4);
-      
-      console.log(`Item ${index + 1}:`, {
-        codigo: item.produto_codigo,
-        descricao: item.produto_descricao,
-        valorBruto,
-        valorDescItem,
-        valorIpiItem,
-        valorStItem,
-        aliqIpi: arredondar(item.aliq_ipi, 4)
+      console.log(`--- ITEM ${index + 1} DE ${itens.length} ---`);
+      console.log('Código do produto:', item.produto_codigo);
+      console.log('Descrição:', item.produto_descricao);
+      console.log('VALORES BRUTOS DO ITEM:', {
+        valor_bruto_string: item.valor_bruto,
+        valor_desconto_string: item.valor_desconto,
+        valor_com_desconto_string: item.valor_com_desconto, // NOVO: mostrar valor já calculado
+        valor_ipi_string: item.valor_ipi,
+        valor_icms_st_string: item.valor_icms_st,
+        aliq_ipi_string: item.aliq_ipi
       });
       
-      // Valores brutos
+      // Garantir que todos os valores sejam numéricos SEM arredondamento prematuro
+      const valorBruto = parseFloat(item.valor_bruto) || 0;
+      const valorDescItem = parseFloat(item.valor_desconto) || 0;
+      const valorComDescontoItem = parseFloat(item.valor_com_desconto) || parseFloat(item.valor_liquido) || 0; // NOVO: usar valor_com_desconto
+      const valorIpiItem = parseFloat(item.valor_ipi) || 0;
+      const valorStItem = parseFloat(item.valor_icms_st) || 0;
+      
+      console.log('VALORES PROCESSADOS (USANDO VALOR_COM_DESCONTO):', {
+        valorBruto,
+        valorDescItem,
+        valorComDescontoItem, // NOVO: mostrar valor já calculado corretamente
+        valorIpiItem,
+        valorStItem,
+        aliq_ipi: item.aliq_ipi
+      });
+      
+      // Somar mantendo precisão total - USANDO valor_com_desconto
       valorProdutos += valorBruto;
       valorDesconto += valorDescItem;
-      
-      // Valores com impostos
+      valorComDesconto += valorComDescontoItem; // CORRIGIDO: usar valor já calculado
       valorIpi += valorIpiItem;
       valorSt += valorStItem;
+      
+      console.log('TOTALIZADORES ACUMULADOS ATÉ AGORA (PRECISÃO TOTAL):', {
+        valorProdutos,
+        valorDesconto,
+        valorIpi,
+        valorSt
+      });
+      
+      // Verificar se há discrepâncias no IPI
+      if (item.aliq_ipi && item.aliq_ipi > 0) {
+        const valorLiquidoItem = valorBruto - valorDescItem;
+        const ipiEsperado = (valorLiquidoItem * parseFloat(item.aliq_ipi)) / 100;
+        const diferencaIpi = Math.abs(valorIpiItem - ipiEsperado);
+        
+        console.log('VERIFICAÇÃO DE IPI:', {
+          aliq_ipi: item.aliq_ipi,
+          valorLiquidoItem,
+          ipiEsperado: arredondar(ipiEsperado, 2),
+          ipiNoItem: valorIpiItem,
+          diferencaIpi: arredondar(diferencaIpi, 4),
+          diferencaSignificativa: diferencaIpi > 0.01
+        });
+        
+        if (diferencaIpi > 0.01) {
+          console.warn(`⚠️ DIVERGÊNCIA DE IPI NO ITEM ${index + 1}:`, {
+            produto: item.produto_codigo,
+            ipiEsperado: arredondar(ipiEsperado, 2),
+            ipiCalculado: valorIpiItem,
+            diferenca: arredondar(diferencaIpi, 4)
+          });
+        }
+      }
+      
+      console.log(`--- FIM ITEM ${index + 1} ---\n`);
     });
     
-    // Calcular totais finais com arredondamento adequado
-    valorProdutos = arredondar(valorProdutos, 2);
-    valorDesconto = arredondar(valorDesconto, 2);
-    valorComDesconto = arredondar(valorProdutos - valorDesconto, 2);
-    valorIpi = arredondar(valorIpi, 2);
-    valorSt = arredondar(valorSt, 2);
-    valorTotal = arredondar(valorComDesconto + valorIpi + valorSt, 2);
+    // CORREÇÃO FUNDAMENTAL: Usar valores já calculados corretamente
+    // valorComDesconto já foi somado corretamente usando valor_com_desconto de cada item
+    valorTotal = valorComDesconto + valorIpi + valorSt;
     
-    console.log('Totais calculados:', {
+    console.log('VALORES COM PRECISÃO TOTAL ANTES DO ARREDONDAMENTO:', {
       valorProdutos,
       valorDesconto,
       valorComDesconto,
       valorIpi,
       valorSt,
       valorTotal
+    });
+    
+    // APLICAR ARREDONDAMENTO APENAS NO FINAL seguindo regras aritméticas corretas
+    const valorProdutosArredondado = arredondar(valorProdutos, 2);
+    const valorDescontoArredondado = arredondar(valorDesconto, 2);
+    const valorComDescontoArredondado = arredondar(valorComDesconto, 2);
+    const valorIpiArredondado = arredondar(valorIpi, 2);
+    const valorStArredondado = arredondar(valorSt, 2);
+    const valorTotalArredondado = arredondar(valorTotal, 2);
+    
+    console.log('======= TOTAIS FINAIS CALCULADOS =======');
+    console.log('Totais arredondados corretamente:', {
+      valorProdutos: valorProdutosArredondado,
+      valorDesconto: valorDescontoArredondado,
+      valorComDesconto: valorComDescontoArredondado,
+      valorIpi: valorIpiArredondado,
+      valorSt: valorStArredondado,
+      valorTotal: valorTotalArredondado
     });
     
     // Verificar se os cálculos resultaram em valores zerados mas há itens no orçamento
     // Isso pode indicar um problema no cálculo
-    if (itens.length > 0 && valorTotal === 0 && totais.valorTotal > 0) {
-      console.warn('ATENÇÃO: Os cálculos resultaram em valores zerados mas há itens no orçamento. Mantendo os valores originais.');
+    if (itens.length > 0 && valorTotalArredondado === 0 && totais.valorTotal > 0) {
+      console.error('🚨 ERRO CRÍTICO: Os cálculos resultaram em valores zerados mas há itens no orçamento!');
+      console.error('Valores atuais no estado:', totais);
+      console.error('Mantendo os valores originais para evitar perda de dados.');
       return; // Manter os valores originais, não atualizando o estado
     }
     
-    // Atualizar estado de totais
+    // Atualizar estado de totais com valores arredondados
     setTotais({
-      valorProdutos,
-      valorDesconto,
-      valorComDesconto,
-      valorIpi,
-      valorSt,
-      valorTotal
+      valorProdutos: valorProdutosArredondado,
+      valorDesconto: valorDescontoArredondado,
+      valorComDesconto: valorComDescontoArredondado,
+      valorIpi: valorIpiArredondado,
+      valorSt: valorStArredondado,
+      valorTotal: valorTotalArredondado
     });
+    
+    console.log('=== ESTADO DE TOTAIS ATUALIZADO ===');
+    console.log('Novos totais salvos no estado:', {
+      valorProdutos: valorProdutosArredondado,
+      valorDesconto: valorDescontoArredondado,
+      valorComDesconto: valorComDescontoArredondado,
+      valorIpi: valorIpiArredondado,
+      valorSt: valorStArredondado,
+      valorTotal: valorTotalArredondado
+    });
+    console.log('======= FIM DEBUG ATUALIZAR TOTAIS =======\n');
   };
   
   // Adicionar uma função calcularTotais - esta precisa ser adicionada antes da função salvarOrcamento
@@ -1948,20 +2312,25 @@ const TelaVendas = () => {
         form_pagto: formaPagamentoSelecionada,
         cond_pagto: condicaoPagamentoSelecionada,
         itens: itensOrcamento.map(item => ({
-            produto_codigo: item.produto_codigo,
+          produto_codigo: item.produto_codigo,
           quantidade: item.quantidade,
-          valor_unitario: item.valor_unitario,
-          valor_bruto: item.valor_bruto,
-          valor_desconto: item.valor_desconto,
-          valor_liquido: item.valor_liquido,
-          valor_total: item.valor_liquido + (parseFloat(item.valor_ipi) || 0) + (parseFloat(item.valor_icms_st) || 0),
+          valor_unitario: arredondar(item.valor_unitario, 2), // Este é o valor unitário ORIGINAL (sem desconto)
+          valor_unitario_final: arredondar(item.valor_unitario_final, 2), // NOVO: Enviar valor unitário FINAL (COM desconto)
+          valor_bruto: arredondar(item.valor_bruto, 2),
+          valor_desconto: arredondar(item.valor_desconto, 2),
+          // valor_liquido é valor_bruto - valor_desconto. O campo mais importante é valor_com_desconto
+          valor_liquido: arredondar(item.valor_bruto - item.valor_desconto, 2),
+          valor_com_desconto: arredondar(item.valor_com_desconto, 2), // Este é o valor TOTAL do item COM desconto
+          // valor_total do item (considerando impostos) ainda é calculado no backend, mas baseado em valor_com_desconto
+          // Se quisermos enviar o valor_total do item já calculado no front, seria:
+          // valor_total: arredondar(item.valor_com_desconto + (parseFloat(item.valor_ipi) || 0) + (parseFloat(item.valor_icms_st) || 0), 2),
           desconto: item.desconto || 0,
-          aliq_icms: item.aliq_icms || 0,
-          valor_icms: item.valor_icms || 0,
+          aliq_icms: arredondar(item.aliq_icms || 0, 2),
+          valor_icms: arredondar(item.valor_icms || 0, 2),
           st_icms: item.st_icms || 'N',
-          valor_icms_st: item.valor_icms_st || 0,
-          aliq_ipi: item.aliq_ipi || 0,
-          valor_ipi: item.valor_ipi || 0,
+          valor_icms_st: arredondar(item.valor_icms_st || 0, 2),
+          aliq_ipi: arredondar(item.aliq_ipi || 0, 2),
+          valor_ipi: arredondar(item.valor_ipi || 0, 2),
           unidade: item.unidade || item.produto?.unidade || '', // Adicionar unidade do item
           isUnidade2: item.isUnidade2 || false // Adicionar flag indicando se usa unidade2
         }))
@@ -3277,6 +3646,59 @@ const TelaVendas = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Função para recalcular valores de itens carregados do banco (corrigir valores incorretos)
+  const recalcularValoresItens = (itens) => {
+    return itens.map(item => {
+      const quantidade = parseFloat(item.quantidade) || 0;
+      const valorUnitario = parseFloat(item.valor_unitario) || 0;
+      const desconto = parseFloat(item.desconto) || 0;
+      
+      // CORREÇÃO: Se há desconto, precisamos reverter para obter o valor original
+      // e depois aplicar corretamente seguindo a lógica do ERP
+      let valorUnitarioOriginal = valorUnitario;
+      let valorUnitarioFinal = valorUnitario;
+      
+      if (desconto > 0) {
+        // Reverter o desconto para encontrar o valor original
+        valorUnitarioOriginal = valorUnitario / (1 - desconto / 100);
+        
+        // Aplicar desconto corretamente e arredondar valor unitário
+        valorUnitarioFinal = valorUnitarioOriginal * (1 - desconto / 100);
+        valorUnitarioFinal = arredondar(valorUnitarioFinal, 2);
+      }
+      
+      // Recalcular seguindo a lógica correta do ERP
+      const valorBruto = quantidade * valorUnitarioOriginal;
+      const valorDesconto = (valorBruto * desconto) / 100;
+      const valorLiquido = quantidade * valorUnitarioFinal; // Valor correto: qtd × valor unitário final
+      
+      console.log(`🔧 RECALCULANDO item ${item.produto_codigo}:`, {
+        original: {
+          valor_unitario: item.valor_unitario,
+          valor_bruto: item.valor_bruto,
+          valor_desconto: item.valor_desconto,
+          valor_liquido: item.valor_liquido
+        },
+        recalculado: {
+          valor_unitario_original: valorUnitarioOriginal.toFixed(4),
+          valor_unitario_final: valorUnitarioFinal.toFixed(2),
+          valor_bruto: valorBruto.toFixed(2),
+          valor_desconto: valorDesconto.toFixed(2),
+          valor_liquido: valorLiquido.toFixed(2)
+        }
+      });
+      
+      return {
+        ...item,
+        valor_unitario_original: valorUnitarioOriginal,
+        valor_unitario_final: valorUnitarioFinal,
+        valor_bruto: valorBruto,
+        valor_desconto: valorDesconto,
+        valor_liquido: valorLiquido
+      };
+    });
+  };
+
   return (
     <div className="mobile-container">
       <Box sx={{ mb: isMobile ? 2 : 3 }}>
@@ -4515,15 +4937,32 @@ const TelaVendas = () => {
                     </Typography>
                     
                     <TextField
-                      label="Desconto %"
+                      label={
+                        descontoValidacao.maxPermitido > 0 
+                          ? `Desconto % (máx: ${descontoValidacao.maxPermitido}%)`
+                          : "Desconto %"
+                      }
                       type="number"
                       value={descontoTemp}
-                      onChange={(e) => setDescontoTemp(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
+                      onChange={(e) => handleDescontoChange(e.target.value)}
                       fullWidth
                       InputProps={{ 
                         inputProps: { min: 0, max: 100, step: 0.01 },
-                        startAdornment: <Box sx={{ width: 8 }} />
+                        startAdornment: <Box sx={{ width: 8 }} />,
+                        endAdornment: descontoValidacao.loading && (
+                          <CircularProgress size={20} />
+                        )
                       }}
+                      helperText={
+                        descontoValidacao.mensagem && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <WarningIcon fontSize="small" color="warning" />
+                            <Typography variant="caption" color="warning.main">
+                              {descontoValidacao.mensagem}
+                            </Typography>
+                          </Box>
+                        )
+                      }
                       sx={{ 
                         '& .MuiOutlinedInput-root': {
                           borderRadius: 2
@@ -4699,6 +5138,7 @@ const TelaVendas = () => {
                               <TableCell align="right" sx={{ fontWeight: 500 }}>Valor Unit.</TableCell>
                               <TableCell align="center" sx={{ fontWeight: 500 }}>Desc. %</TableCell>
                               <TableCell align="right" sx={{ fontWeight: 500 }}>Valor Total</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 500 }}>Valor c/ Desc.</TableCell>
                               <TableCell align="right" sx={{ fontWeight: 500, display: { xs: 'none', sm: 'table-cell' } }}>Impostos</TableCell>
                               <TableCell align="center" sx={{ fontWeight: 500 }}>ST</TableCell>
                               <TableCell align="center" sx={{ fontWeight: 500 }}>Ações</TableCell>
@@ -4742,7 +5182,20 @@ const TelaVendas = () => {
                                     </Tooltip>
                                   )}
                                 </TableCell>
-                                <TableCell align="right">{formatCurrency(item.valor_unitario)}</TableCell>
+                                <TableCell align="right">
+                                  {item.desconto > 0 ? (
+                                    <Box sx={{ textAlign: 'right' }}>
+                                      <Typography variant="body2" sx={{ textDecoration: 'line-through', color: 'text.disabled', fontSize: '0.75rem' }}>
+                                        {formatCurrency(item.valor_unitario)} {/* MOSTRAR SEMPRE O VALOR UNITÁRIO ORIGINAL */}
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                        {formatCurrency(item.valor_unitario_final)} {/* MOSTRAR VALOR UNITÁRIO FINAL (COM DESCONTO) */}
+                                      </Typography>
+                                    </Box>
+                                  ) : (
+                                    formatCurrency(item.valor_unitario) /* Se não tem desconto, mostra o original */
+                                  )}
+                                </TableCell>
                                 <TableCell align="center">
                                   {item.desconto > 0 ? (
                                     <Chip 
@@ -4757,7 +5210,10 @@ const TelaVendas = () => {
                                   )}
                                 </TableCell>
                                 <TableCell align="right" sx={{ fontWeight: 500 }}>
-                                  {formatCurrency(item.valor_liquido)}
+                                  {formatCurrency(item.quantidade * item.valor_unitario)}
+                                </TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 500, color: 'primary.main' }}>
+                                  {formatCurrency(item.valor_com_desconto)} {/* USAR DIRETAMENTE O valor_com_desconto DO ITEM */}
                                 </TableCell>
                                 <TableCell align="right">
                                   <Tooltip title={

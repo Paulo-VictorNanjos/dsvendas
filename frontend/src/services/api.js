@@ -248,6 +248,15 @@ export const orcamentosAPI = {
     return await api.post(`/orcamentos/${id}/pedido`);
   },
   
+  // Aplicar desconto com validação
+  aplicarDesconto: async (productId, requestedDiscount, unitPrice) => {
+    return await api.post('/orcamentos/aplicar-desconto', {
+      productId,
+      requestedDiscount,
+      unitPrice
+    });
+  },
+  
   // Converter orçamento em pedido de venda
   converterEmPedidoVenda: async (codigo, dadosPagamento) => {
     try {

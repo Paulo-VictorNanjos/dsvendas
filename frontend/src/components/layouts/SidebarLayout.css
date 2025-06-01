@@ -38,7 +38,7 @@
   top: 0;
   z-index: 1000;
   box-shadow: var(--shadow-md);
-  height: 80px; /* Altura reduzida para melhor visualização */
+  height: 100px; /* Altura reduzida para melhor visualização */
 }
 
 /* Conteúdo da barra de navegação */

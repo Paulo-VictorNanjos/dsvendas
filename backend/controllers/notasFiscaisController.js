@@ -2,6 +2,19 @@ const db = require('../database/connection');
 const erpDb = require('../database/connection').erpConnection;
 const { formatarResposta } = require('../utils/apiResponse');
 const axios = require('axios');
+const { default: rax } = require('axios-retry');
+
+// Configuração do axios-retry
+const instance = axios.create();
+rax(instance, { 
+  retries: 3, // Número de tentativas
+  retryDelay: rax.exponentialDelay, // Delay exponencial entre tentativas
+  retryCondition: (error) => {
+    // Retry em erros de rede ou 5xx
+    return rax.isNetworkOrIdempotentRequestError(error) || 
+           (error.response && error.response.status >= 500);
+  }
+});
 
 /**
  * Controller para operações relacionadas a notas fiscais
@@ -308,17 +321,21 @@ module.exports = {
       // URL da API do DANFe Rápida conforme documentação
       const url = 'https://ws.meudanfe.com/api/v1/get/nfe/xmltodanfepdf/API';
       
-      // Configuração da requisição conforme documentação (Content-Type: application/xml)
+      // Configuração da requisição com timeout e headers
       const config = {
         headers: {
           'Content-Type': 'application/xml'
+        },
+        timeout: 30000, // 30 segundos de timeout
+        validateStatus: function (status) {
+          return status >= 200 && status < 300; // Aceita apenas status 2xx
         }
       };
       
       console.log('[DEBUG] Enviando requisição para:', url);
       
       // Fazer a requisição POST enviando o XML no corpo
-      const response = await axios.post(url, xml, config);
+      const response = await instance.post(url, xml, config);
       
       // Verificar se a resposta contém o PDF em base64
       if (response.data) {
@@ -351,20 +368,26 @@ module.exports = {
       console.log('[DEBUG] Mensagem de erro:', errorMessage);
       
       let mensagemErro = 'Erro ao gerar DANFE por XML';
+      let codigoStatus = 500;
       
-      // Se for erro 500 com a mensagem específica da documentação
-      if (statusCode === 500 && typeof errorResponse === 'string' && 
-          errorResponse.includes('Falha ao gerar PDF do DANFE')) {
+      // Tratamento específico por tipo de erro
+      if (error.code === 'ECONNABORTED') {
+        mensagemErro = 'Tempo limite excedido ao tentar gerar o DANFE. Tente novamente.';
+        codigoStatus = 504;
+      } else if (statusCode === 502) {
+        mensagemErro = 'Serviço temporariamente indisponível. Tente novamente em alguns minutos.';
+      } else if (statusCode === 500) {
         mensagemErro = 'Falha ao gerar PDF do DANFE. Confira se o XML é válido.';
       }
       
-      return res.status(500).json(formatarResposta(
+      return res.status(codigoStatus).json(formatarResposta(
         false, 
         mensagemErro,
         { 
           erro: errorMessage, 
           statusCode: statusCode,
-          detalhes: errorResponse
+          detalhes: errorResponse,
+          sugestao: 'Se o problema persistir, entre em contato com o suporte.'
         }
       ));
     }
@@ -427,7 +450,7 @@ module.exports = {
           console.log('[DEBUG] Enviando requisição para:', url);
           
           // Fazer a requisição POST enviando o XML no corpo
-          const response = await axios.post(url, xml, config);
+          const response = await instance.post(url, xml, config);
           
           // Verificar se a resposta contém o PDF em base64
           if (response.data) {

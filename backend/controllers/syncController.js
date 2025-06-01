@@ -966,21 +966,67 @@ class SyncController {
 
         logger.info(`Log de sincronização registrado para o pedido ${nextOrderCode}`);
 
-        // Inserir pedido no ERP (mob_pedidos_venda)
-        logger.info(`Inserindo pedido ${nextOrderCode} na tabela mob_pedidos_venda`);
-        
-        // Primeiro, fazer o INSERT básico como no código mobile
+        // PRIMEIRO PASSO NO ERP: Inserir o cabeçalho básico do pedido
         await erpConnection('mob_pedidos_venda').insert({
           codigo: nextOrderCode,
-          cod_vendedor: quotation.cod_vendedor,
+          cod_vendedor: quotation.cod_vendedor, // Usar cod_vendedor do orçamento
           dt_inc: transactionDate,
-          cod_usr_inc: 1 // Usuário padrão do sistema
+          cod_usr_inc: 1 // Usuário padrão do sistema, ou buscar do usuário logado se aplicável
         });
+        logger.info(`Pedido ${nextOrderCode} (INSERT inicial) gravado em mob_pedidos_venda`);
 
-        // Formatar a hora corretamente para HH:MM:SS
-        const timeString = transactionDate.toTimeString().split(' ')[0];
+        // SEGUNDO PASSO NO ERP: Calcular totais com desconto e inserir itens
+        logger.info(`Calculando valor com desconto e inserindo itens do pedido ${nextOrderCode} na tabela mob_itens_pedidos_venda`);
+        let valorTotalComDescontoAplicado = 0;
+        
+        for (let i = 0; i < quotationItems.length; i++) {
+          const item = quotationItems[i];
+          
+          // Usar o valor líquido/com desconto do item, conforme calculado no orçamento
+          // Prioridade: valor_liquido -> valor_com_desconto -> valor_total (do item) -> fallback para bruto
+          const itemValorComDesconto = 
+            parseFloat(item.valor_liquido) || 
+            parseFloat(item.valor_com_desconto) || 
+            parseFloat(item.valor_total) || 
+            (parseFloat(item.valor_unitario) * parseFloat(item.quantidade)); // Fallback para bruto se nenhum valor com desconto estiver disponível
+          
+          valorTotalComDescontoAplicado += itemValorComDesconto;
+          
+          logger.info(`Item ${i + 1} - Valores para conversão (com desconto):`, {
+            produto_codigo: item.produto_codigo,
+            valor_unitario_bruto: item.valor_unitario,
+            quantidade: item.quantidade,
+            valor_liquido_orc: item.valor_liquido,
+            valor_com_desconto_orc: item.valor_com_desconto,
+            valor_total_item_orc: item.valor_total, // Valor total do item no orçamento (pode incluir impostos)
+            valor_enviado_item_erp: itemValorComDesconto,
+            observacao: "Usando valor COM DESCONTO para ERP aplicar impostos"
+          });
+          
+          const mobItemData = {
+            cod_pedido_venda: nextOrderCode,
+            cod_vendedor: quotation.cod_vendedor,
+            cod_produto: item.produto_codigo,
+            seq: i + 1, 
+            vl_unitario: item.valor_unitario, // Ainda envia o valor unitário bruto para referência
+            vl_unit_venda: itemValorComDesconto / (parseFloat(item.quantidade) || 1), // Recalcula unitário com desconto
+            qtde: item.quantidade,
+            vl_total: itemValorComDesconto, // Valor COM DESCONTO do item
+            comissao: 0,
+            cod_tabela_preco: 1,
+            cod_local_estoque: 1,
+            promocional: 'N',
+            unidade: 'PC', 
+            fator_conversao: 1.00
+          };
+          
+          await erpConnection('mob_itens_pedidos_venda').insert(mobItemData);
+          logger.info(`Item ${i + 1} do pedido ${nextOrderCode} inserido com sucesso (valor com desconto)`);
+        }
+        logger.info(`Todos os itens do pedido ${nextOrderCode} inseridos. Valor total com desconto calculado: ${valorTotalComDescontoAplicado}`);
 
-        // Depois, fazer o UPDATE com todos os campos
+        // TERCEIRO PASSO NO ERP: Atualizar o cabeçalho do pedido com todos os detalhes e totais calculados
+        logger.info(`Atualizando cabeçalho completo do pedido ${nextOrderCode} em mob_pedidos_venda com valor com desconto: ${valorTotalComDescontoAplicado}`);
         await erpConnection('mob_pedidos_venda')
           .where('codigo', nextOrderCode)
           .update({
@@ -996,53 +1042,18 @@ class SyncController {
             cod_forma_pagto: req.body.cod_forma_pagto || quotation.cod_forma_pagto,
             cod_cond_pagto: req.body.cod_cond_pagto || quotation.cod_cond_pagto,
             cod_tabela_preco: 1,
-            vl_produtos: quotation.vl_produtos,
-            vl_desconto: quotation.vl_desconto,
-            vl_total: quotation.vl_total,
+            vl_produtos: valorTotalComDescontoAplicado, // Usar valor COM DESCONTO calculado
+            vl_desconto: quotation.vl_desconto,       // Desconto total do orçamento (informativo)
+            vl_total: valorTotalComDescontoAplicado,     // Usar valor COM DESCONTO calculado (ERP aplicará impostos aqui)
             nap: 0,
             cod_tablet: 0,
             cod_representante: quotation.cod_vendedor,
             dt_transmissao: transactionDate,
-            hr_transmissao: timeString, // Usando apenas o horário formatado
+            hr_transmissao: transactionDate.toTimeString().split(' ')[0], 
             tp_pedido: 'C'
           });
+        logger.info(`Pedido ${nextOrderCode} (UPDATE completo) na tabela mob_pedidos_venda com sucesso`);
 
-        logger.info(`Pedido ${nextOrderCode} inserido na tabela mob_pedidos_venda com sucesso`);
-
-        // Inserir itens do pedido na tabela mob_itens_pedidos_venda
-        logger.info(`Inserindo itens do pedido ${nextOrderCode} na tabela mob_itens_pedidos_venda`);
-        
-        for (let i = 0; i < quotationItems.length; i++) {
-          const item = quotationItems[i];
-          
-          // Calcular o valor total bruto (sem impostos) para o ERP
-          const valorUnitario = parseFloat(item.valor_unitario) || 0;
-          const quantidade = parseFloat(item.quantidade) || 0;
-          const valorTotalBruto = valorUnitario * quantidade;
-          
-          const mobItemData = {
-            cod_pedido_venda: nextOrderCode,
-            cod_vendedor: quotation.cod_vendedor,
-            cod_produto: item.produto_codigo,
-            seq: i + 1, // Sequência começa em 1
-            vl_unitario: item.valor_unitario,
-            vl_unit_venda: item.valor_unitario,
-            qtde: item.quantidade,
-            vl_total: valorTotalBruto, // Usar valor bruto (unitário × quantidade) sem impostos
-            comissao: 0,
-            cod_tabela_preco: 1,
-            cod_local_estoque: 1,
-            promocional: 'N',
-            unidade: 'PC', // Unidade padrão
-            fator_conversao: 1.00
-          };
-          
-          await erpConnection('mob_itens_pedidos_venda').insert(mobItemData);
-          logger.info(`Item ${i + 1} do pedido ${nextOrderCode} inserido com sucesso`);
-        }
-        
-        logger.info(`Todos os itens do pedido ${nextOrderCode} inseridos com sucesso na tabela mob_itens_pedidos_venda`);
-        
         // Atualizar log de sincronização
         await trx('log_sincronizacao')
           .where({

@@ -565,6 +565,32 @@ router.delete('/orcamentos/:id', orcamentoController.delete);
 router.post('/orcamentos/:id/aprovar', orcamentoController.approve);
 router.get('/orcamentos/:id/pdf', orcamentoController.generatePdf);
 
+// Rota para aplicar desconto com validação
+router.post('/orcamentos/aplicar-desconto', async (req, res) => {
+  try {
+    const { productId, requestedDiscount, unitPrice } = req.body;
+    
+    if (!productId || requestedDiscount === undefined || !unitPrice) {
+      return res.status(400).json({
+        error: 'Parâmetros obrigatórios: productId, requestedDiscount, unitPrice'
+      });
+    }
+    
+    const result = await syncService.applyDiscount(productId, requestedDiscount, unitPrice);
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Erro ao aplicar desconto:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor',
+      message: error.message
+    });
+  }
+});
+
 // Endpoint para relatório fiscal de orçamento
 router.get('/orcamentos/:id/fiscal', async (req, res) => {
   try {

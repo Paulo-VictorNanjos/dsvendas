@@ -543,6 +543,29 @@ export const calcularTributosItem = async ({
     console.log('Redução ICMS:', redIcms);
     console.log('Substituição Tributária:', subsTrib);
     
+    // REGRA ESPECIAL CST 60: ICMS já retido anteriormente por substituição tributária
+    // Quando CST = 60, não deve ser feito novo cálculo de ICMS-ST
+    if (cst === '60') {
+      console.log(`CST ${cst} detectado - ICMS já retido anteriormente por substituição tributária. Não calculando novo ICMS-ST.`);
+      
+      // Calcular apenas os valores básicos de ICMS
+      baseIcms = valorTotal * (1 - (redIcms / 100));
+      valorIcms = baseIcms * (aliqIcms / 100);
+      
+      return {
+        baseIcms: parseFloat(baseIcms.toFixed(2)),
+        valorIcms: parseFloat(valorIcms.toFixed(2)),
+        aliqIcms,
+        redIcms,
+        baseIcmsSt: 0,
+        valorIcmsSt: 0,
+        valorIpi,
+        valorFcpSt: 0,
+        cst: cst,
+        mensagem: 'CST 60: ICMS já foi retido anteriormente por substituição tributária.'
+      };
+    }
+    
     // Verificar se o produto é importado e aplicar alíquota especial se configurada
     // Isso deve ser feito antes do cálculo do ICMS básico
     const codOrigem = dadosFiscais.cod_origem_prod || '0';

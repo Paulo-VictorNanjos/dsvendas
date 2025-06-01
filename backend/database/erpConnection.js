@@ -5,9 +5,9 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 console.log('Database Config:', {
-  host: process.env.ERP_DB_HOST || 'duesoft.permak.com.br',
+  host: process.env.ERP_DB_HOST || 'localhost',
   user: process.env.ERP_DB_USER || 'postgres',
-  database: process.env.ERP_DB_NAME || 'permak',
+  database: process.env.ERP_DB_NAME || 'permak_test',
   port: process.env.ERP_DB_PORT || '5434'
 });
 
@@ -15,10 +15,10 @@ console.log('Database Config:', {
 const erpConnection = knex({
   client: 'pg',
   connection: {
-    host: process.env.ERP_DB_HOST || 'duesoft.permak.com.br',
+    host: process.env.ERP_DB_HOST || 'localhost',
     user: process.env.ERP_DB_USER || 'postgres',
     password: process.env.ERP_DB_PASSWORD || 'ds_due339',
-    database: process.env.ERP_DB_NAME || 'permak',
+    database: process.env.ERP_DB_NAME || 'permak_test',
     port: process.env.ERP_DB_PORT || 5434,
     // Aumentar o timeout para 60 segundos
     connectionTimeout: 60000,

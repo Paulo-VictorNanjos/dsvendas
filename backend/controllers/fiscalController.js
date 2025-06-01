@@ -1047,6 +1047,29 @@ const verificarSubstituicaoTributaria = async (req, res) => {
         logger.info(`Produto ${codigo} tem ST baseado no CST ${cstIcms}`);
       }
       
+      // REGRA ESPECIAL CST 60: ICMS já retido anteriormente por substituição tributária
+      // Quando CST = 60, não há ST a recolher
+      if (cstIcms === '60') {
+        logger.info(`CST ${cstIcms} detectado para produto ${codigo} - ICMS já retido anteriormente por substituição tributária. Não há ST a recolher.`);
+        return res.json({
+          success: true,
+          temST: false,
+          stIcms: cstIcms,
+          aliqIcms: aliqIcms,
+          aliqInterna: 0,
+          redIcms: redIcms,
+          produto: produto.descricao || 'N/A',
+          ncm: produto.class_fiscal || 'N/A',
+          iva: 0,
+          detalhes: {
+            cstIcms: cstIcms,
+            regraFiscal: codRegraIcms,
+            uf: uf,
+            mensagem: 'CST 60: ICMS já foi retido anteriormente por substituição tributária. Não há novo ICMS-ST a recolher.'
+          }
+        });
+      }
+      
       // Verificar se tem alíquota interna que pode indicar ST
       aliqInterna = parseFloat(regraIcmsItem.aliq_interna || 0);
       if (!temST && aliqInterna > 0 && cstsComST.includes(cstIcms)) {

@@ -1,4 +1,3 @@
-
 /**
  * Função de arredondamento aprimorada para 4 casas decimais
  * Garante que números como 235.10000000000002 sejam corretamente convertidos para 235.1000
@@ -155,6 +154,39 @@ export const calcularTributos = (item, dadosFiscais, dadosClassificacao, ufClien
   
   // Calcular IPI - Passo 1: Imposto sobre Produtos Industrializados
   const valorIpi = arredondar(valorLiquido * (aliqIpi / 100));
+  
+  // REGRA ESPECIAL CST 60: ICMS já retido anteriormente por substituição tributária
+  // Quando CST = 60, não deve ser feito novo cálculo de ICMS-ST
+  if (cstIcms === '60') {
+    console.log(`CST ${cstIcms} detectado - ICMS já retido anteriormente por substituição tributária. Não calculando novo ICMS-ST.`);
+    
+    // Calcular apenas os valores básicos de ICMS
+    const baseIcms = redIcms > 0 ? arredondar(valorLiquido * (1 - (redIcms / 100))) : valorLiquido;
+    const valorIcms = arredondar(baseIcms * (aliqIcms / 100));
+    const valorTotalComImpostos = arredondar(valorLiquido + valorIpi);
+    
+    return {
+      valorBruto,
+      valorDesconto,
+      valorLiquido,
+      baseIcms,
+      aliqIcms,
+      valorIcms,
+      aliqIpi,
+      valorIpi,
+      temST: false,
+      baseIcmsSt: 0,
+      valorIcmsSt: 0,
+      valorFcpSt: 0,
+      valorTotalSt: 0,
+      valorTotalComImpostos,
+      cstIcms,
+      icmsSt: 'N',
+      isImportado,
+      detalhesCalculo: null,
+      mensagem: 'CST 60: ICMS já foi retido anteriormente por substituição tributária.'
+    };
+  }
   
   // Verificar se tem ST: primeira verificação pelo campo icms_st, depois pelo CST
   const temST = icmsSt === 'S' || verificarCSTSubstituicaoTributaria(cstIcms);
