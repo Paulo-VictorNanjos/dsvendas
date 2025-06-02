@@ -1050,8 +1050,10 @@ module.exports = {
           'clientes.fone1',
           'clientes.ddd_celular',
           'clientes.celular',
+          'clientes.email as cliente_email',
           'vendedores.nome as vendedor_nome',
           'vendedores.email as vendedor_email',
+          'vendedores.fone as vendedor_telefone',
           'formas_pagto.descricao as forma_pagto_descricao',
           'cond_pagto.descricao as cond_pagto_descricao'
         )
@@ -1072,7 +1074,7 @@ module.exports = {
         });
       }
 
-      // Buscar itens do orçamento
+      // Buscar itens do orçamento com todas as informações
       const itens = await db('orcamentos_itens')
         .where('orcamento_codigo', id)
         .leftJoin('produtos', function() {
@@ -1097,64 +1099,93 @@ module.exports = {
           'orcamentos_itens.valor_icms',
           'orcamentos_itens.aliq_ipi',
           'orcamentos_itens.valor_ipi',
+          'orcamentos_itens.icms_st',
+          'orcamentos_itens.class_fiscal',
+          'orcamentos_itens.ncm',
+          'orcamentos_itens.cod_origem_prod',
           db.raw('COALESCE(produtos.nome, produtos.descricao, CONCAT(\'Produto \', orcamentos_itens.produto_codigo)) as produto_descricao'),
           'produtos.unidade',
           'orcamentos_itens.unidade as item_unidade',
           'orcamentos_itens.is_unidade2'
-        );
+        )
+        .orderBy('orcamentos_itens.dt_inc');
 
-      // Processar itens com cálculos
+      // Processar itens usando valores EXATOS do banco de dados (NÃO recalcular)
       const itensProcessados = itens.map(item => {
-        const quantidade = parseFloat(item.quantidade) || 0;
-        const valorUnitario = parseFloat(item.valor_unitario) || 0;
-        const valorBruto = quantidade * valorUnitario;
-        const desconto = parseFloat(item.desconto) || 0;
-        const valorDesconto = (valorBruto * desconto) / 100;
-        const valorLiquido = valorBruto - valorDesconto;
-        const valorIpi = parseFloat(item.valor_ipi) || 0;
-        const valorIcmsSt = parseFloat(item.valor_icms_st) || 0;
-        const valorTotal = valorLiquido + valorIpi + valorIcmsSt;
+        console.log(`🎯 PDF - Item ${item.produto_codigo} - Valores do banco:`, {
+          valor_bruto: item.valor_bruto,
+          valor_desconto: item.valor_desconto,
+          valor_liquido: item.valor_liquido,
+          valor_com_desconto: item.valor_com_desconto,
+          valor_total: item.valor_total,
+          valor_ipi: item.valor_ipi,
+          valor_icms_st: item.valor_icms_st
+        });
 
         return {
           ...item,
-          valor_bruto: valorBruto,
-          valor_desconto: valorDesconto,
-          valor_liquido: valorLiquido,
-          valor_total: valorTotal,
-          tem_st: item.st_icms === 'S',
+          // USAR VALORES EXATOS DO BANCO - NÃO RECALCULAR
+          valor_bruto: parseFloat(item.valor_bruto) || 0,
+          valor_desconto: parseFloat(item.valor_desconto) || 0,
+          valor_liquido: parseFloat(item.valor_liquido) || 0,
+          valor_com_desconto: parseFloat(item.valor_com_desconto) || 0,
+          valor_total: parseFloat(item.valor_total) || 0,
+          valor_ipi: parseFloat(item.valor_ipi) || 0,
+          valor_icms: parseFloat(item.valor_icms) || 0,
+          valor_icms_st: parseFloat(item.valor_icms_st) || 0,
+          aliq_icms: parseFloat(item.aliq_icms) || 0,
+          aliq_ipi: parseFloat(item.aliq_ipi) || 0,
+          desconto: parseFloat(item.desconto) || 0,
+          quantidade: parseFloat(item.quantidade) || 0,
+          valor_unitario: parseFloat(item.valor_unitario) || 0,
+          tem_st: item.icms_st === 'S' || parseFloat(item.valor_icms_st) > 0,
+          tem_ipi: parseFloat(item.valor_ipi) > 0,
           // Usar a unidade do item se disponível, ou a unidade do produto como fallback
           unidade: item.item_unidade || item.unidade,
-          isUnidade2: item.is_unidade2
+          isUnidade2: item.is_unidade2 === true || item.is_unidade2 === 1
         };
       });
 
-      // Calcular totais
-      const totais = itensProcessados.reduce((acc, item) => {
-        acc.valor_produtos += parseFloat(item.valor_bruto) || 0;
-        acc.valor_descontos += parseFloat(item.valor_desconto) || 0;
-        acc.valor_liquido += parseFloat(item.valor_com_desconto) || 0;
-        acc.valor_ipi += parseFloat(item.valor_ipi) || 0;
-        acc.valor_st += parseFloat(item.valor_icms_st) || 0;
-        acc.valor_total += parseFloat(item.valor_com_desconto) || 0;
-        return acc;
-      }, {
-        valor_produtos: 0,
-        valor_descontos: 0,
-        valor_liquido: 0,
-        valor_ipi: 0,
-        valor_st: 0,
-        valor_total: 0
+      // Usar totais EXATOS do orçamento (NÃO recalcular)
+      const totais = {
+        valor_produtos: parseFloat(orcamento.vl_produtos) || 0,
+        valor_descontos: parseFloat(orcamento.vl_desconto) || 0,
+        valor_liquido: parseFloat(orcamento.vl_com_desconto) || 0,
+        valor_ipi: parseFloat(orcamento.vl_ipi) || 0,
+        valor_st: parseFloat(orcamento.vl_st) || 0,
+        valor_total: parseFloat(orcamento.vl_total) || 0
+      };
+
+      console.log(`🎯 PDF - Totais do orçamento ${id}:`, {
+        totaisCalculados: totais,
+        totaisOriginaisBanco: {
+          vl_produtos: orcamento.vl_produtos,
+          vl_desconto: orcamento.vl_desconto,
+          vl_com_desconto: orcamento.vl_com_desconto,
+          vl_ipi: orcamento.vl_ipi,
+          vl_st: orcamento.vl_st,
+          vl_total: orcamento.vl_total
+        }
       });
 
       // Montar objeto completo para o PDF
       const dadosCompletos = {
         orcamento: {
           ...orcamento,
+          codigo: orcamento.codigo,
+          dt_orcamento: orcamento.dt_orcamento,
+          dt_inc: orcamento.dt_inc,
+          observacoes: orcamento.observacoes || '',
+          status: orcamento.status || 'PENDENTE',
+          cod_transportadora: orcamento.cod_transportadora,
+          nome_transportadora: orcamento.nome_transportadora,
           itens: itensProcessados,
-          totais
+          totais: totais
         },
         cliente: {
+          codigo: orcamento.cod_cliente,
           nome: orcamento.cliente_nome || orcamento.cliente_razao,
+          razao: orcamento.cliente_razao,
           pessoa: orcamento.pessoa,
           documento: orcamento.pessoa === 'J' ? orcamento.cnpj : orcamento.cpf,
           inscricao: orcamento.pessoa === 'J' ? orcamento.insc_est : orcamento.rg,
@@ -1169,16 +1200,27 @@ module.exports = {
           },
           contato: {
             telefone: orcamento.fone1 ? `(${orcamento.ddd_fone1}) ${orcamento.fone1}` : null,
-            celular: orcamento.celular ? `(${orcamento.ddd_celular}) ${orcamento.celular}` : null
+            celular: orcamento.celular ? `(${orcamento.ddd_celular}) ${orcamento.celular}` : null,
+            email: orcamento.cliente_email
           }
         },
         vendedor: {
+          codigo: orcamento.cod_vendedor,
           nome: orcamento.vendedor_nome,
-          email: orcamento.vendedor_email
+          email: orcamento.vendedor_email,
+          telefone: orcamento.vendedor_telefone
         },
         pagamento: {
-          forma: orcamento.forma_pagto_descricao,
-          condicao: orcamento.cond_pagto_descricao
+          forma: orcamento.forma_pagto_descricao || 'Não informado',
+          condicao: orcamento.cond_pagto_descricao || 'Não informado',
+          cod_forma_pagto: orcamento.cod_forma_pagto,
+          cod_cond_pagto: orcamento.cod_cond_pagto
+        },
+        empresa: {
+          nome: 'DSVENDAS',
+          endereco: 'Endereço da empresa',
+          telefone: 'Telefone da empresa',
+          email: 'email@empresa.com'
         }
       };
 
