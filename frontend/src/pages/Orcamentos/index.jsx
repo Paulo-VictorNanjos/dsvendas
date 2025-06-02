@@ -201,7 +201,7 @@ const Orcamentos = () => {
 
     if (window.confirm('Tem certeza que deseja duplicar este orçamento?')) {
       try {
-        const response = await api.orcamentosAPI.duplicar(id);
+        const response = await api.orcamentos.duplicar(id);
         const novoCodigo = response.data?.codigo || 'novo';
         toast.success(`Orçamento duplicado com sucesso! Código: ${novoCodigo}`);
         fetchData();
