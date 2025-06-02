@@ -340,7 +340,7 @@ const OrcamentoPDF = ({ dados }) => {
               <Text style={styles.colSt}>
                 {parseFloat(item.valor_icms_st) > 0 ? formatCurrency(item.valor_icms_st) : '-'}
               </Text>
-              <Text style={styles.colVlLiq}>{formatCurrency(item.valor_liquido)}</Text>
+              <Text style={styles.colVlLiq}>{formatCurrency(item.valor_com_desconto)}</Text>
               <Text style={styles.colTotal}>{formatCurrency(item.valor_total)}</Text>
             </View>
           ))}
