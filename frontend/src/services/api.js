@@ -225,6 +225,9 @@ export const orcamentosAPI = {
   // Excluir orçamento
   excluir: (id) => api.delete(`/orcamentos/${id}`),
   
+  // Duplicar orçamento
+  duplicar: (id) => api.post(`/orcamentos/${id}/duplicate`),
+  
   // Converter orçamento em pedido
   converterEmPedido: (id) => api.post(`/orcamentos/${id}/converter`),
 

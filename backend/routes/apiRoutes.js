@@ -562,6 +562,7 @@ router.get('/orcamentos/:id', orcamentoController.getById);
 router.post('/orcamentos', orcamentoController.create);
 router.put('/orcamentos/:id', orcamentoController.update);
 router.delete('/orcamentos/:id', orcamentoController.delete);
+router.post('/orcamentos/:id/duplicate', orcamentoController.duplicate);
 router.post('/orcamentos/:id/aprovar', orcamentoController.approve);
 router.get('/orcamentos/:id/pdf', orcamentoController.generatePdf);
 

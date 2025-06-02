@@ -746,6 +746,126 @@ module.exports = {
     }
   },
 
+  async duplicate(req, res) {
+    const { id } = req.params;
+    const trx = await db.transaction();
+
+    try {
+      // Verificar se o usuário tem um vendedor vinculado
+      if (!req.vendedor && req.userRole !== 'admin') {
+        await trx.rollback();
+        return res.status(403).json({
+          success: false,
+          message: 'Você precisa vincular um token de vendedor ao seu usuário antes de duplicar orçamentos'
+        });
+      }
+
+      // Buscar orçamento original
+      const orcamentoOriginal = await trx('orcamentos')
+        .where('codigo', id)
+        .first();
+
+      if (!orcamentoOriginal) {
+        await trx.rollback();
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Orçamento não encontrado' 
+        });
+      }
+
+      // Se não for admin, verificar se o orçamento pertence ao vendedor vinculado ao usuário
+      if (req.userRole !== 'admin' && req.vendedor && orcamentoOriginal.cod_vendedor !== req.vendedor.codigo) {
+        await trx.rollback();
+        return res.status(403).json({
+          success: false,
+          message: 'Você não tem permissão para duplicar este orçamento'
+        });
+      }
+
+      // Buscar itens do orçamento original
+      const itensOriginais = await trx('orcamentos_itens')
+        .where('orcamento_codigo', id);
+
+      // Gerar novo código para o orçamento duplicado
+      const novoCodigo = uuidv4();
+
+      // Criar novo orçamento baseado no original
+      const novoOrcamento = {
+        codigo: novoCodigo,
+        dt_orcamento: new Date(), // Nova data
+        dt_inc: new Date(),
+        cod_cliente: orcamentoOriginal.cod_cliente,
+        cod_vendedor: orcamentoOriginal.cod_vendedor,
+        cod_transportadora: orcamentoOriginal.cod_transportadora,
+        nome_transportadora: orcamentoOriginal.nome_transportadora,
+        cod_empresa: orcamentoOriginal.cod_empresa,
+        observacoes: `[CÓPIA] ${orcamentoOriginal.observacoes || ''}`,
+        cod_forma_pagto: orcamentoOriginal.cod_forma_pagto,
+        cod_cond_pagto: orcamentoOriginal.cod_cond_pagto,
+        vl_desconto: orcamentoOriginal.vl_desconto,
+        vl_produtos: orcamentoOriginal.vl_produtos,
+        vl_com_desconto: orcamentoOriginal.vl_com_desconto,
+        vl_ipi: orcamentoOriginal.vl_ipi,
+        vl_st: orcamentoOriginal.vl_st,
+        vl_total: orcamentoOriginal.vl_total,
+        cod_status: 1 // Status inicial
+      };
+
+      // Inserir novo orçamento
+      await trx('orcamentos').insert(novoOrcamento);
+
+      // Duplicar itens do orçamento
+      if (itensOriginais.length > 0) {
+        const novosItens = itensOriginais.map(item => ({
+          codigo: uuidv4(),
+          orcamento_codigo: novoCodigo,
+          produto_codigo: item.produto_codigo,
+          quantidade: item.quantidade,
+          valor_unitario: item.valor_unitario,
+          valor_bruto: item.valor_bruto,
+          valor_desconto: item.valor_desconto,
+          valor_liquido: item.valor_liquido,
+          valor_com_desconto: item.valor_com_desconto,
+          valor_total: item.valor_total,
+          desconto: item.desconto,
+          st_icms: item.st_icms,
+          aliq_icms: item.aliq_icms,
+          valor_icms: item.valor_icms,
+          icms_st: item.icms_st,
+          valor_icms_st: item.valor_icms_st,
+          ipi: item.ipi,
+          valor_ipi: item.valor_ipi,
+          class_fiscal: item.class_fiscal,
+          ncm: item.ncm,
+          cod_origem_prod: item.cod_origem_prod,
+          cod_status: 1,
+          dt_inc: new Date(),
+          unidade: item.unidade,
+          is_unidade2: item.is_unidade2
+        }));
+
+        await trx('orcamentos_itens').insert(novosItens);
+      }
+
+      // Commit da transação
+      await trx.commit();
+
+      return res.status(201).json({ 
+        success: true, 
+        codigo: novoCodigo,
+        message: 'Orçamento duplicado com sucesso' 
+      });
+    } catch (error) {
+      // Rollback em caso de erro
+      await trx.rollback();
+      console.error('Erro ao duplicar orçamento:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: error.message 
+      });
+    }
+  },
+
   // Método para aprovar um orçamento
   async approve(req, res) {
     const { id } = req.params;

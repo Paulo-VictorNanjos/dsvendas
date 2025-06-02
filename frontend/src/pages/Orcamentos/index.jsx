@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import { 
   FaPlus, FaSearch, FaFilter, FaEdit, FaTrash, FaFilePdf, 
   FaUser, FaUserTie, FaMoneyBillWave,
-  FaTable, FaTh, FaCheck, FaSpinner
+  FaTable, FaTh, FaCheck, FaSpinner, FaCopy
 } from 'react-icons/fa';
 import { ButtonGroup, Tooltip } from '@mui/material';
 import api from '../../services/api';
@@ -192,6 +192,26 @@ const Orcamentos = () => {
     }
   };
   
+  const handleDuplicate = async (id) => {
+    const orcamento = orcamentos.find(o => o.codigo === id);
+    if (orcamento && !temPermissao(orcamento)) {
+      toast.error('Você não tem permissão para duplicar este orçamento.');
+      return;
+    }
+
+    if (window.confirm('Tem certeza que deseja duplicar este orçamento?')) {
+      try {
+        const response = await api.orcamentosAPI.duplicar(id);
+        const novoCodigo = response.data?.codigo || 'novo';
+        toast.success(`Orçamento duplicado com sucesso! Código: ${novoCodigo}`);
+        fetchData();
+      } catch (error) {
+        console.error('Erro ao duplicar orçamento:', error);
+        toast.error('Erro ao duplicar orçamento!');
+      }
+    }
+  };
+  
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     try {
@@ -322,6 +342,16 @@ const Orcamentos = () => {
                           size="sm"
                         >
                           <FaEdit />
+                        </Button>
+                      </Tooltip>
+                      
+                      <Tooltip title="Duplicar">
+                        <Button
+                          onClick={() => handleDuplicate(orcamento.codigo)}
+                          color="secondary"
+                          size="sm"
+                        >
+                          <FaCopy />
                         </Button>
                       </Tooltip>
                       
@@ -523,6 +553,15 @@ const Orcamentos = () => {
                         className="action-btn"
                       >
                         <FaEdit />
+                      </Button>
+                      <Button 
+                        variant="outline-secondary"
+                        size="sm"
+                        onClick={() => handleDuplicate(orcamento.codigo)}
+                        title="Duplicar"
+                        className="action-btn"
+                      >
+                        <FaCopy />
                       </Button>
                       <Button 
                         variant="outline-danger" 
