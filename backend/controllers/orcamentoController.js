@@ -1053,7 +1053,6 @@ module.exports = {
           'clientes.email as cliente_email',
           'vendedores.nome as vendedor_nome',
           'vendedores.email as vendedor_email',
-          'vendedores.fone as vendedor_telefone',
           'formas_pagto.descricao as forma_pagto_descricao',
           'cond_pagto.descricao as cond_pagto_descricao'
         )
@@ -1207,8 +1206,7 @@ module.exports = {
         vendedor: {
           codigo: orcamento.cod_vendedor,
           nome: orcamento.vendedor_nome,
-          email: orcamento.vendedor_email,
-          telefone: orcamento.vendedor_telefone
+          email: orcamento.vendedor_email
         },
         pagamento: {
           forma: orcamento.forma_pagto_descricao || 'Não informado',
