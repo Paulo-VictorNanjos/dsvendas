@@ -4,11 +4,10 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { 
-  FaPlus, FaSearch, FaFilter, FaEdit, FaTrash, FaFilePdf, 
-  FaUser, FaUserTie, FaMoneyBillWave,
-  FaTable, FaTh, FaCheck, FaSpinner, FaCopy
+  FaPlus, FaSearch, FaEdit, FaTrash, FaFilePdf, 
+  FaCheck, FaSpinner, FaCopy, FaEnvelope, FaTable, FaTh,
+  FaUser, FaUserTie, FaMoneyBillWave
 } from 'react-icons/fa';
-import { ButtonGroup, Tooltip } from '@mui/material';
 import api from '../../services/api';
 import { getUser } from '../../services/authService';
 import OrcamentoPDF from '../../components/OrcamentoPDF';
@@ -21,14 +20,11 @@ const Orcamentos = () => {
   const [loading, setLoading] = useState(true);
   const [filteredOrcamentos, setFilteredOrcamentos] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [clientes, setClientes] = useState([]);
   const [vendedores, setVendedores] = useState([]);
-  const [formasPagamento, setFormasPagamento] = useState([]);
-  const [condicoesPagamento, setCondicoesPagamento] = useState([]);
-  const [viewMode, setViewMode] = useState('cards');
   const [usuarioLogado, setUsuarioLogado] = useState(null);
   const [loadingPdfData, setLoadingPdfData] = useState({});
+  const [viewMode, setViewMode] = useState('table');
   const navigate = useNavigate();
 
   // Detectar se é dispositivo móvel
@@ -96,23 +92,16 @@ const Orcamentos = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [orcamentosRes, clientesRes, vendedoresRes, formasPagtoRes, condPagtoRes] = await Promise.all([
+      const [orcamentosRes, clientesRes, vendedoresRes] = await Promise.all([
         api.get('/orcamentos'),
         api.get('/clientes'),
-        api.get('/vendedores'),
-        api.get('/formas-pagamento'),
-        api.get('/condicoes-pagamento')
+        api.get('/vendedores')
       ]);
       
-      // Acessar a propriedade data da resposta
       const orcamentosData = orcamentosRes.data.data || [];
       setOrcamentos(orcamentosData);
       setClientes(clientesRes.data || []);
       setVendedores(vendedoresRes.data || []);
-      setFormasPagamento(formasPagtoRes.data || []);
-      setCondicoesPagamento(condPagtoRes.data || []);
-
-      // A filtragem será feita pelo filterOrcamentos
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
       toast.error('Erro ao carregar dados!');
@@ -123,7 +112,7 @@ const Orcamentos = () => {
 
   useEffect(() => {
     if (usuarioLogado) {
-    fetchData();
+      fetchData();
     }
   }, [usuarioLogado]);
 
@@ -232,15 +221,12 @@ const Orcamentos = () => {
     try {
       setLoadingPdfData(prev => ({ ...prev, [orcamento.codigo]: true }));
       
-      // Buscar os dados necessários para o PDF
       const response = await api.get(`/orcamentos/${orcamento.codigo}/pdf`);
       const dadosPDF = response.data.data;
       
-      // Gerar o PDF usando o componente OrcamentoPDF
       const blob = await pdf(<OrcamentoPDF dados={dadosPDF} />).toBlob();
       const url = URL.createObjectURL(blob);
       
-      // Criar link e fazer download
       const link = document.createElement('a');
       link.href = url;
       link.download = `orcamento_${formatOrcamentoCodigo(orcamento.codigo)}.pdf`;
@@ -258,19 +244,41 @@ const Orcamentos = () => {
     }
   };
 
-  // Função para obter nome do cliente a partir do código
   const getClienteName = (codCliente) => {
     const cliente = clientes.find(c => c.codigo === codCliente);
     return cliente ? (cliente.razao || cliente.nome) : codCliente;
   };
 
-  // Função para obter nome do vendedor a partir do código
   const getVendedorName = (codVendedor) => {
     const vendedor = vendedores.find(v => v.codigo === codVendedor);
     return vendedor ? vendedor.nome : codVendedor;
   };
 
-  // Função para obter a cor do status
+  const getStatusClass = (status) => {
+    switch (status) {
+      case 'APROVADO':
+      case 'CONVERTIDO':
+        return 'status-aprovado';
+      case 'CANCELADO':
+        return 'status-cancelado';
+      default:
+        return 'status-pendente';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'CONVERTIDO':
+        return 'Processado';
+      case 'APROVADO':
+        return 'Aprovado';
+      case 'CANCELADO':
+        return 'Cancelado';
+      default:
+        return 'Pendente';
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'APROVADO':
@@ -282,9 +290,124 @@ const Orcamentos = () => {
         return 'warning';
     }
   };
-    
-  // Função para renderizar a tabela de orçamentos
+
+  // Renderizar visualização em tabela (desktop)
   const renderTable = () => {
+    return (
+      <div className="orcamentos-table-container">
+        {loading ? (
+          <div className="loading-container">
+            <Spinner animation="border" variant="primary" />
+            <p className="mt-3 mb-0">Carregando orçamentos...</p>
+          </div>
+        ) : filteredOrcamentos.length === 0 ? (
+          <div className="empty-state">
+            <h5>Nenhum orçamento encontrado</h5>
+            <p>Não há orçamentos cadastrados ou que correspondam aos filtros aplicados.</p>
+          </div>
+        ) : (
+          <>
+            <Table className="orcamentos-table" hover>
+              <thead>
+                <tr>
+                  <th>Número</th>
+                  <th>Emissão</th>
+                  <th>Validade</th>
+                  <th>Vendedor</th>
+                  <th>Cliente Razão Social</th>
+                  <th>Valor Total</th>
+                  <th>Status</th>
+                  <th>E-mail</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrcamentos.map(orcamento => {
+                  const isLoading = loadingPdfData[orcamento.codigo];
+                  
+                  return (
+                    <tr key={orcamento.codigo}>
+                      <td className="orcamento-numero">{formatOrcamentoCodigo(orcamento.codigo)}</td>
+                      <td className="orcamento-data">{formatDate(orcamento.dt_orcamento)}</td>
+                      <td className="orcamento-data">{formatDate(orcamento.dt_validade)}</td>
+                      <td className="orcamento-vendedor">{getVendedorName(orcamento.cod_vendedor)}</td>
+                      <td className="orcamento-cliente">{getClienteName(orcamento.cod_cliente)}</td>
+                      <td className="orcamento-valor">{formatCurrency(orcamento.vl_total || 0)}</td>
+                      <td>
+                        <span className={`status-badge ${getStatusClass(orcamento.status)}`}>
+                          {getStatusText(orcamento.status)}
+                        </span>
+                      </td>
+                      <td>
+                        <button className="btn-acao btn-email" title="Enviar por E-mail">
+                          <FaEnvelope />
+                        </button>
+                      </td>
+                      <td>
+                        <div className="acoes-lista">
+                          <button 
+                            className="btn-acao btn-editar" 
+                            onClick={() => handleEdit(orcamento.codigo)}
+                            title="Editar"
+                          >
+                            <FaEdit />
+                          </button>
+                          
+                          <button 
+                            className="btn-acao btn-duplicar" 
+                            onClick={() => handleDuplicate(orcamento.codigo)}
+                            title="Duplicar"
+                          >
+                            <FaCopy />
+                          </button>
+                          
+                          <button 
+                            className="btn-acao btn-aprovar" 
+                            onClick={() => handleApprove(orcamento.codigo)}
+                            title="Aprovar"
+                            disabled={orcamento.status === 'APROVADO' || orcamento.status === 'CONVERTIDO'}
+                          >
+                            <FaCheck />
+                          </button>
+                          
+                          <button 
+                            className="btn-acao btn-pdf" 
+                            onClick={() => handleGeneratePdf(orcamento)}
+                            title="Baixar PDF"
+                            disabled={isLoading}
+                          >
+                            {isLoading ? <FaSpinner className="fa-spin" /> : <FaFilePdf />}
+                          </button>
+                          
+                          <button 
+                            className="btn-acao btn-excluir" 
+                            onClick={() => handleDelete(orcamento.codigo)}
+                            title="Excluir"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+            
+            {/* Paginação */}
+            <div className="pagination-container">
+              <div className="pagination-info">
+                Itens por Página: 25 | Total: {filteredOrcamentos.length} | Página 1 de 1
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Renderizar visualização em cards (mobile)
+  const renderCards = () => {
     if (loading) {
       return (
         <div className="text-center p-5">
@@ -304,303 +427,161 @@ const Orcamentos = () => {
     }
 
     return (
-      <div className="table-responsive-new">
-        <Table striped hover responsive="sm" className="align-middle mobile-optimized">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Data</th>
-              <th>Cliente</th>
-              <th>Vendedor</th>
-              <th>Valor Total</th>
-              <th>Status</th>
-              <th className="actions-column">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredOrcamentos.map(orcamento => {
-              const isLoading = loadingPdfData[orcamento.codigo];
+      <Row className="g-3">
+        {filteredOrcamentos.map(orcamento => {
+          const isLoading = loadingPdfData[orcamento.codigo];
 
-              return (
-                <tr key={orcamento.codigo}>
-                  <td>{formatOrcamentoCodigo(orcamento.codigo)}</td>
-                  <td>{formatDate(orcamento.dt_orcamento)}</td>
-                  <td className="cliente-col">{getClienteName(orcamento.cod_cliente)}</td>
-                  <td>{getVendedorName(orcamento.cod_vendedor)}</td>
-                  <td>{formatCurrency(orcamento.vl_total || 0)}</td>
-                  <td>
-                    <Badge bg={getStatusColor(orcamento.status)}>
-                      {orcamento.status === 'CONVERTIDO' ? 'APROVADO' : (orcamento.status || 'PENDENTE')}
+          return (
+            <Col key={orcamento.codigo} xs={12} sm={6} md={4} lg={4}>
+              <Card className="h-100 shadow-sm border-0 orcamento-card">
+                <Card.Body className="p-3">
+                  <div className="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                      <h5 className="mb-1">{formatOrcamentoCodigo(orcamento.codigo)}</h5>
+                      <small className="text-muted">
+                        {formatDate(orcamento.dt_orcamento)}
+                      </small>
+                    </div>
+                    <Badge bg={getStatusColor(orcamento.status)} className="mobile-badge">
+                      {orcamento.status === 'CONVERTIDO' ? 'PROCESSADO' : (orcamento.status || 'PENDENTE')}
                     </Badge>
-                  </td>
-                  <td>
-                    <ButtonGroup size="small" variant="outlined" className="action-buttons">
-                      <Tooltip title="Editar">
-                        <Button
-                          onClick={() => handleEdit(orcamento.codigo)}
-                          color="primary"
-                          size="sm"
-                        >
-                          <FaEdit />
-                        </Button>
-                      </Tooltip>
-                      
-                      <Tooltip title="Duplicar">
-                        <Button
-                          onClick={() => handleDuplicate(orcamento.codigo)}
-                          color="secondary"
-                          size="sm"
-                        >
-                          <FaCopy />
-                        </Button>
-                      </Tooltip>
-                      
-                      <Tooltip title="Excluir">
-                        <Button
-                          onClick={() => handleDelete(orcamento.codigo)}
-                          color="error"
-                          size="sm"
-                        >
-                          <FaTrash />
-                        </Button>
-                      </Tooltip>
-                      
-                      <Tooltip title="Aprovar">
-                        <Button
-                          onClick={() => handleApprove(orcamento.codigo)}
-                          color="success"
-                          size="sm"
-                          disabled={orcamento.status === 'APROVADO' || orcamento.status === 'CONVERTIDO'}
-                        >
-                          <FaCheck />
-                        </Button>
-                      </Tooltip>
-                      
-                      <Tooltip title="Baixar PDF">
-                        <Button
-                          onClick={() => handleGeneratePdf(orcamento)}
-                          color="info"
-                          size="sm"
-                          disabled={isLoading}
-                        >
-                          {isLoading ? <FaSpinner className="fa-spin" /> : <FaFilePdf />}
-                        </Button>
-                      </Tooltip>
-                    </ButtonGroup>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
-      </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <div className="d-flex align-items-center mb-2">
+                      <FaUser className="me-2 text-muted" />
+                      <div className="text-truncate">
+                        <small className="text-muted d-block">Cliente</small>
+                        <div className="mobile-text-client">{getClienteName(orcamento.cod_cliente)}</div>
+                      </div>
+                    </div>
+                    <div className="d-flex align-items-center mb-2">
+                      <FaUserTie className="me-2 text-muted" />
+                      <div>
+                        <small className="text-muted d-block">Vendedor</small>
+                        <div>{getVendedorName(orcamento.cod_vendedor)}</div>
+                      </div>
+                    </div>
+                    <div className="d-flex align-items-center">
+                      <FaMoneyBillWave className="me-2 text-muted" />
+                      <div>
+                        <small className="text-muted d-block">Valor Total</small>
+                        <div className="fw-bold">{formatCurrency(orcamento.vl_total || 0)}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="d-flex justify-content-end gap-2 mobile-actions">
+                    <Button 
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => handleEdit(orcamento.codigo)}
+                      title="Editar"
+                      className="action-btn"
+                    >
+                      <FaEdit />
+                    </Button>
+                    <Button 
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={() => handleDuplicate(orcamento.codigo)}
+                      title="Duplicar"
+                      className="action-btn"
+                    >
+                      <FaCopy />
+                    </Button>
+                    <Button 
+                      variant="outline-danger" 
+                      size="sm" 
+                      onClick={() => handleDelete(orcamento.codigo)}
+                      title="Excluir"
+                      className="action-btn"
+                    >
+                      <FaTrash />
+                    </Button>
+                    <Button 
+                      variant="outline-success" 
+                      size="sm"
+                      onClick={() => handleApprove(orcamento.codigo)}
+                      title="Aprovar"
+                      disabled={orcamento.status === 'APROVADO' || orcamento.status === 'CONVERTIDO'}
+                      className="action-btn"
+                    >
+                      <FaCheck />
+                    </Button>
+                    <Button 
+                      variant="outline-info"
+                      size="sm"
+                      onClick={() => handleGeneratePdf(orcamento)}
+                      title="Baixar PDF"
+                      disabled={isLoading}
+                      className="action-btn"
+                    >
+                      {isLoading ? <FaSpinner className="fa-spin" /> : <FaFilePdf />}
+                    </Button>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          );
+        })}
+      </Row>
     );
   };
 
   return (
-    <Container fluid className="py-3 mobile-container">
-      <Card className="shadow-sm border-0 mb-3">
-        <Card.Body>
-          <div className="d-flex flex-wrap justify-content-between align-items-center mb-3">
-            <h4 className="mb-2 mb-md-0">Orçamentos</h4>
-            <div className="d-flex gap-2">
-              {!isMobile && (
-                <>
-                  <Button 
-                    variant={viewMode === 'table' ? 'primary' : 'outline-primary'}
-                    onClick={() => setViewMode('table')}
-                    title="Visualização em Tabela"
-                    className="view-toggle-btn"
-                  >
-                    <FaTable />
-                  </Button>
-                  <Button 
-                    variant={viewMode === 'cards' ? 'primary' : 'outline-primary'}
-                    onClick={() => setViewMode('cards')}
-                    title="Visualização em Cards"
-                    className="view-toggle-btn"
-                  >
-                    <FaTh />
-                  </Button>
-                </>
-              )}
-              <Button variant="success" onClick={handleNewOrcamento} className="new-btn">
-                <FaPlus className={isMobile ? '' : 'me-2'} />
-                {!isMobile && 'Novo Orçamento'}
+    <div className="orcamentos-container">
+      {/* Cabeçalho */}
+      <div className="orcamentos-header d-flex justify-content-between align-items-center">
+        <h1 className="orcamentos-title">Orçamentos</h1>
+        <div className="orcamentos-actions">
+          {!isMobile && (
+            <>
+              <Button 
+                variant={viewMode === 'table' ? 'primary' : 'outline-primary'}
+                onClick={() => setViewMode('table')}
+                title="Visualização em Tabela"
+                className="view-toggle-btn"
+              >
+                <FaTable />
               </Button>
-            </div>
-          </div>
-
-          <Row className="mb-3">
-            <Col xs={12}>
-              <InputGroup>
-                <Form.Control
-                  type="text"
-                  placeholder="Buscar orçamento..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <Button variant="outline-secondary">
-                  <FaSearch />
-                </Button>
-                <Button 
-                  variant="outline-secondary"
-                  onClick={() => setShowFilters(!showFilters)}
-                >
-                  <FaFilter />
-                </Button>
-              </InputGroup>
-            </Col>
-          </Row>
-            
-          {showFilters && (
-            <Row className="filters-section g-2">
-              <Col xs={12} md={3}>
-                <Form.Group>
-                  <Form.Label>Cliente</Form.Label>
-                  <Form.Select>
-                    <option value="">Todos</option>
-                    {clientes.map(cliente => (
-                      <option key={cliente.codigo} value={cliente.codigo}>
-                        {cliente.razao || cliente.nome}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col xs={12} md={3}>
-                <Form.Group>
-                  <Form.Label>Vendedor</Form.Label>
-                  <Form.Select>
-                    <option value="">Todos</option>
-                    {vendedores.map(vendedor => (
-                      <option key={vendedor.codigo} value={vendedor.codigo}>
-                        {vendedor.nome}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col xs={12} md={3}>
-                <Form.Group>
-                  <Form.Label>Status</Form.Label>
-                  <Form.Select>
-                    <option value="">Todos</option>
-                    <option value="PENDENTE">Pendente</option>
-                    <option value="APROVADO">Aprovado</option>
-                    <option value="CANCELADO">Cancelado</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
+              <Button 
+                variant={viewMode === 'cards' ? 'primary' : 'outline-primary'}
+                onClick={() => setViewMode('cards')}
+                title="Visualização em Cards"
+                className="view-toggle-btn"
+              >
+                <FaTh />
+              </Button>
+            </>
           )}
-        </Card.Body>
-      </Card>
+          <button className="btn btn-novo-orcamento" onClick={handleNewOrcamento}>
+            <FaPlus className="me-2" />
+            {isMobile ? 'Novo' : 'Incluir Orçamento'}
+          </button>
+        </div>
+      </div>
 
-      {viewMode === 'table' && !isMobile ? (
-        renderTable()
-      ) : (
-        <Row className="g-3">
-          {filteredOrcamentos.map(orcamento => {
-            const isLoading = loadingPdfData[orcamento.codigo];
-
-            return (
-              <Col key={orcamento.codigo} xs={12} sm={6} md={4} lg={4}>
-                <Card className="h-100 shadow-sm border-0 orcamento-card">
-                  <Card.Body className="p-3">
-                    <div className="d-flex justify-content-between align-items-start mb-3">
-                      <div>
-                        <h5 className="mb-1">{formatOrcamentoCodigo(orcamento.codigo)}</h5>
-                        <small className="text-muted">
-                          {formatDate(orcamento.dt_orcamento)}
-                        </small>
-                      </div>
-                      <Badge bg={getStatusColor(orcamento.status)} className="mobile-badge">
-                        {orcamento.status === 'CONVERTIDO' ? 'APROVADO' : (orcamento.status || 'PENDENTE')}
-                      </Badge>
-                    </div>
-
-                    <div className="mb-3">
-                      <div className="d-flex align-items-center mb-2">
-                        <FaUser className="me-2 text-muted" />
-                        <div className="text-truncate">
-                          <small className="text-muted d-block">Cliente</small>
-                          <div className="mobile-text-client">{getClienteName(orcamento.cod_cliente)}</div>
-                        </div>
-                      </div>
-                      <div className="d-flex align-items-center mb-2">
-                        <FaUserTie className="me-2 text-muted" />
-                        <div>
-                          <small className="text-muted d-block">Vendedor</small>
-                          <div>{getVendedorName(orcamento.cod_vendedor)}</div>
-                        </div>
-                      </div>
-                      <div className="d-flex align-items-center">
-                        <FaMoneyBillWave className="me-2 text-muted" />
-                        <div>
-                          <small className="text-muted d-block">Valor Total</small>
-                          <div className="fw-bold">{formatCurrency(orcamento.vl_total || 0)}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="d-flex justify-content-end gap-2 mobile-actions">
-                      <Button 
-                        variant="outline-primary"
-                        size="sm"
-                        onClick={() => handleEdit(orcamento.codigo)}
-                        title="Editar"
-                        className="action-btn"
-                      >
-                        <FaEdit />
-                      </Button>
-                      <Button 
-                        variant="outline-secondary"
-                        size="sm"
-                        onClick={() => handleDuplicate(orcamento.codigo)}
-                        title="Duplicar"
-                        className="action-btn"
-                      >
-                        <FaCopy />
-                      </Button>
-                      <Button 
-                        variant="outline-danger" 
-                        size="sm" 
-                        onClick={() => handleDelete(orcamento.codigo)}
-                        title="Excluir"
-                        className="action-btn"
-                      >
-                        <FaTrash />
-                      </Button>
-                      <Button 
-                        variant="outline-success" 
-                        size="sm"
-                        onClick={() => handleApprove(orcamento.codigo)}
-                        title="Aprovar"
-                        disabled={orcamento.status === 'APROVADO' || orcamento.status === 'CONVERTIDO'}
-                        className="action-btn"
-                      >
-                        <FaCheck />
-                      </Button>
-                      <Button 
-                        variant="outline-info"
-                        size="sm"
-                        onClick={() => handleGeneratePdf(orcamento)}
-                        title="Baixar PDF"
-                        disabled={isLoading}
-                        className="action-btn"
-                      >
-                        {isLoading ? <FaSpinner className="fa-spin" /> : <FaFilePdf />}
-                      </Button>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            );
-          })}
+      {/* Filtros */}
+      <div className="orcamentos-filters">
+        <Row className="align-items-center">
+          <Col md={6}>
+            <div className="search-box">
+              <FaSearch className="search-icon" />
+              <Form.Control
+                type="text"
+                placeholder="Buscar orçamento..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </Col>
         </Row>
-      )}
-    </Container>
+      </div>
+
+      {/* Conteúdo - Tabela ou Cards */}
+      {viewMode === 'table' && !isMobile ? renderTable() : renderCards()}
+    </div>
   );
 };
 

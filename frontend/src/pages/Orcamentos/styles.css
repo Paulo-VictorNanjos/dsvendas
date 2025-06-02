@@ -820,4 +820,349 @@
   .hide-on-xs {
     display: none !important;
   }
+}
+
+/* Estilos para página de orçamentos - Estilo VSSALES */
+.orcamentos-container {
+  background-color: #f8f9fa;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.orcamentos-header {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.orcamentos-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #2d3436;
+  margin: 0;
+}
+
+.orcamentos-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.view-toggle-btn {
+  background: white;
+  border: 1px solid #ddd;
+  color: #636e72;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.view-toggle-btn:hover {
+  background: #f8f9fa;
+  border-color: #0984e3;
+  color: #0984e3;
+}
+
+.view-toggle-btn.btn-primary {
+  background: #0984e3;
+  border-color: #0984e3;
+  color: white;
+}
+
+.view-toggle-btn.btn-primary:hover {
+  background: #0868a6;
+  border-color: #0868a6;
+}
+
+.btn-novo-orcamento {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.btn-novo-orcamento:hover {
+  background: linear-gradient(135deg, #c0392b, #a93226);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+}
+
+.orcamentos-filters {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.search-box {
+  position: relative;
+  max-width: 400px;
+}
+
+.search-box .form-control {
+  padding-left: 40px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  height: 40px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  z-index: 2;
+}
+
+.orcamentos-table-container {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.orcamentos-table {
+  width: 100%;
+  margin: 0;
+  background: white;
+}
+
+.orcamentos-table thead {
+  background: #2d3436;
+}
+
+.orcamentos-table thead th {
+  color: white;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 16px 12px;
+  border: none;
+  text-align: center;
+}
+
+.orcamentos-table tbody tr {
+  border-bottom: 1px solid #f1f2f6;
+  transition: background-color 0.2s ease;
+}
+
+.orcamentos-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.orcamentos-table tbody td {
+  padding: 16px 12px;
+  vertical-align: middle;
+  font-size: 13px;
+  text-align: center;
+  border: none;
+}
+
+.orcamento-numero {
+  font-weight: 600;
+  color: #2d3436;
+}
+
+.orcamento-data {
+  color: #636e72;
+}
+
+.orcamento-cliente {
+  text-align: left !important;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orcamento-vendedor {
+  color: #636e72;
+}
+
+.orcamento-valor {
+  font-weight: 600;
+  color: #00b894;
+}
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+  min-width: 80px;
+}
+
+.status-pendente {
+  background-color: #fdcb6e;
+  color: #8b4513;
+}
+
+.status-aprovado {
+  background-color: #00b894;
+  color: white;
+}
+
+.status-cancelado {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.status-convertido {
+  background-color: #0984e3;
+  color: white;
+}
+
+.acoes-lista {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-acao {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-acao:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.btn-editar {
+  background-color: #0984e3;
+  color: white;
+}
+
+.btn-editar:hover {
+  background-color: #0868a6;
+}
+
+.btn-duplicar {
+  background-color: #6c5ce7;
+  color: white;
+}
+
+.btn-duplicar:hover {
+  background-color: #5a4fcf;
+}
+
+.btn-excluir {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.btn-excluir:hover {
+  background-color: #c0392b;
+}
+
+.btn-aprovar {
+  background-color: #00b894;
+  color: white;
+}
+
+.btn-aprovar:hover {
+  background-color: #00a085;
+}
+
+.btn-pdf {
+  background-color: #fd79a8;
+  color: white;
+}
+
+.btn-pdf:hover {
+  background-color: #e84393;
+}
+
+.btn-email {
+  background-color: #ffeaa7;
+  color: #2d3436;
+}
+
+.btn-email:hover {
+  background-color: #fdcb6e;
+}
+
+.pagination-container {
+  padding: 20px;
+  background: white;
+  border-top: 1px solid #f1f2f6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pagination-info {
+  color: #636e72;
+  font-size: 13px;
+}
+
+.loading-container {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.empty-state h5 {
+  color: #636e72;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  color: #b2bec3;
+  margin: 0;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .orcamentos-container {
+    padding: 10px;
+  }
+  
+  .orcamentos-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .orcamentos-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  
+  .btn-novo-orcamento {
+    width: 100%;
+    justify-content: center;
+  }
 } 
