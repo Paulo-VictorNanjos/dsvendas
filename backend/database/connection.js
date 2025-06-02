@@ -29,10 +29,10 @@ const connection = knex({
 const erpConnection = knex({
   client: 'pg',
   connection: {
-    host: process.env.ERP_DB_HOST || process.env.DB_HOST || 'localhost',
+    host: process.env.ERP_DB_HOST || process.env.DB_HOST || 'duesoft.permak.com.br',
     user: process.env.ERP_DB_USER || process.env.DB_USER || 'postgres',
     password: process.env.ERP_DB_PASSWORD || process.env.DB_PASSWORD || 'ds_due339',
-    database: process.env.ERP_DB_DATABASE || 'permak_test',
+    database: process.env.ERP_DB_DATABASE || 'permak',
     port: parseInt(process.env.ERP_DB_PORT || process.env.DB_PORT || '5434')
   },
   pool: {
