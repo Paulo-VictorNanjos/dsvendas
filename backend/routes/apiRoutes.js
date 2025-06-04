@@ -19,6 +19,9 @@ const paymentController = require('../controllers/paymentController');
 // Importar o controlador de configurações
 const configurationController = require('../controllers/configurationController');
 
+// Importar o controlador de SMTP
+const smtpController = require('../controllers/smtpController');
+
 // Inicializar padronização de status quando o servidor iniciar
 orcamentoController.padronizarStatus().then(result => {
   if (result) {
@@ -539,6 +542,12 @@ router.post('/auth/verificar-token', authController.verificarToken);
 
 // Rota pública para validar token de vendedor (não requer autenticação)
 router.get('/vendedor-token/validar/:token', vendedorTokenController.validarToken);
+
+// Rotas públicas para WhatsApp (não requerem autenticação)
+router.get('/download-pdf/:token', smtpController.downloadTempPdf);
+router.get('/debug/temp-pdfs', smtpController.debugTempPdfs);
+router.post('/debug/create-test-pdf', smtpController.createTestPdf);
+router.get('/orcamentos/:id/preview/:token', smtpController.serveOrcamentoPreview);
 
 // Middleware de autenticação para rotas protegidas
 router.use(authMiddleware.authenticateToken);
@@ -1348,8 +1357,6 @@ router.get('/usuarios/:id', authMiddleware.authenticateToken, async (req, res) =
   }
 });
 
-
-
 // Rotas para configurações
 // Primeiro as rotas específicas
 router.get('/configurations/stock-validation/settings', authMiddleware.authenticateToken, configurationController.getStockValidationConfig);
@@ -1359,5 +1366,23 @@ router.put('/configurations/stock-validation/settings', authMiddleware.authentic
 router.get('/configurations', authMiddleware.authenticateToken, configurationController.list);
 router.get('/configurations/:key', authMiddleware.authenticateToken, configurationController.get);
 router.put('/configurations/:key', authMiddleware.authenticateToken, authMiddleware.isAdmin, configurationController.update);
+
+// Rotas para configurações SMTP do usuário
+router.get('/smtp/config', authMiddleware.authenticateToken, smtpController.getUserSmtpConfig);
+router.post('/smtp/config', authMiddleware.authenticateToken, smtpController.saveUserSmtpConfig);
+router.post('/smtp/test', authMiddleware.authenticateToken, smtpController.testSmtpConfig);
+router.delete('/smtp/config', authMiddleware.authenticateToken, smtpController.deleteUserSmtpConfig);
+
+// Rotas para envio de orçamentos
+router.post('/orcamentos/:id/email', authMiddleware.authenticateToken, smtpController.sendOrcamentoEmail);
+router.post('/orcamentos/:id/whatsapp', authMiddleware.authenticateToken, smtpController.generateWhatsAppUrl);
+router.post('/orcamentos/:id/whatsapp-advanced', authMiddleware.authenticateToken, smtpController.generateWhatsAppUrlAdvanced);
+router.post('/orcamentos/:id/whatsapp-demo', authMiddleware.authenticateToken, smtpController.generateWhatsAppWithPreviewDemo);
+router.post('/orcamentos/:id/whatsapp-api', authMiddleware.authenticateToken, smtpController.sendOrcamentoWhatsAppCloudAPI);
+router.post('/orcamentos/:id/pdf-link', authMiddleware.authenticateToken, smtpController.generatePdfDownloadLink);
+router.post('/orcamentos/:id/preview', authMiddleware.authenticateToken, smtpController.generateOrcamentoPreview);
+
+// Rota para testar WhatsApp Cloud API
+router.get('/whatsapp-api/test', authMiddleware.authenticateToken, smtpController.testWhatsAppCloudAPI);
 
 module.exports = router; 

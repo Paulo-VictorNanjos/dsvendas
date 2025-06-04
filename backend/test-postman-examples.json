@@ -1,0 +1,94 @@
+{
+  "postman_tests": [
+    {
+      "name": "Teste Cliente 44787 - Código Específico",
+      "method": "POST",
+      "url": "http://localhost:3001/api/webhook/whatsapp/test",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304",
+        "message": "Código: 44787"
+      },
+      "expected": "Sistema deve encontrar cliente 44787 e enviar orçamento automaticamente"
+    },
+    {
+      "name": "Teste Cliente - Só Número",
+      "method": "POST", 
+      "url": "http://localhost:3001/api/webhook/whatsapp/test",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304",
+        "message": "44787"
+      },
+      "expected": "Sistema deve reconhecer número como código do cliente"
+    },
+    {
+      "name": "Teste Cliente Formato Completo",
+      "method": "POST",
+      "url": "http://localhost:3001/api/webhook/whatsapp/test", 
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304",
+        "message": "Cliente 44787"
+      },
+      "expected": "Sistema deve encontrar cliente pelo formato 'Cliente XXXX'"
+    },
+    {
+      "name": "Teste Orçamento Específico",
+      "method": "POST",
+      "url": "http://localhost:3001/api/webhook/whatsapp/test",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304", 
+        "message": "Orçamento 12345"
+      },
+      "expected": "Sistema deve buscar orçamento específico #12345"
+    },
+    {
+      "name": "Teste Mensagem Genérica",
+      "method": "POST",
+      "url": "http://localhost:3001/api/webhook/whatsapp/test",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304",
+        "message": "Oi, quero meu orçamento"
+      },
+      "expected": "Sistema deve enviar instruções de uso"
+    },
+    {
+      "name": "Teste Cliente Inexistente",
+      "method": "POST",
+      "url": "http://localhost:3001/api/webhook/whatsapp/test",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304",
+        "message": "Código: 99999"
+      },
+      "expected": "Sistema deve informar que cliente não foi encontrado"
+    }
+  ],
+  "webhook_verification_test": {
+    "name": "Verificação do Webhook (Facebook)",
+    "method": "GET",
+    "url": "http://localhost:3001/api/webhook/whatsapp?hub.mode=subscribe&hub.challenge=12345&hub.verify_token=DSVENDAS_WEBHOOK_TOKEN",
+    "expected": "Deve retornar: 12345"
+  },
+  "status_test": {
+    "name": "Status do Webhook",
+    "method": "GET", 
+    "url": "http://localhost:3001/api/webhook/whatsapp/status",
+    "expected": "Deve retornar informações do webhook"
+  }
+} 

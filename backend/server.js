@@ -8,6 +8,7 @@ const pedidoRoutes = require('./routes/pedidoRoutes');
 const itemRoutes = require('./routes/itemRoutes');
 const erpRoutes = require('./routes/erpRoutes');
 const notasFiscaisRoutes = require('./routes/notasFiscaisRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 const app = express();
 
@@ -33,6 +34,9 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Servir arquivos estáticos
+app.use('/public', express.static('public'));
+
 // Middleware de logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
@@ -55,6 +59,7 @@ app.use((req, res, next) => {
 // Rotas públicas primeiro (que não requerem autenticação)
 app.use('/api/erp', erpRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/webhook', webhookRoutes);
 
 // Rotas protegidas depois (com autenticação via apiRoutes)
 app.use('/api', apiRoutes);
@@ -103,6 +108,10 @@ app.use((err, req, res, next) => {
 
 // Inicializar serviço de configurações
 const configService = require('./services/configurationService');
+
+// Inicializar sistema de PDFs temporários para WhatsApp
+global.tempPdfs = global.tempPdfs || new Map();
+console.log('📄 Sistema de PDFs temporários inicializado');
 
 // Iniciar o servidor
 const PORT = process.env.PORT || 3001;

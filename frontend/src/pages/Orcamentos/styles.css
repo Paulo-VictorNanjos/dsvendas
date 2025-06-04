@@ -820,7 +820,7 @@
   .hide-on-xs {
     display: none !important;
   }
-}
+} 
 
 /* Estilos para página de orçamentos - Estilo VSSALES */
 .orcamentos-container {
@@ -1163,6 +1163,104 @@
   
   .btn-novo-orcamento {
     width: 100%;
+    justify-content: center;
+  }
+}
+
+.btn-whatsapp {
+  background-color: #25d366 !important;
+  color: white !important;
+}
+
+.btn-whatsapp:hover {
+  background-color: #1da851 !important;
+  color: white !important;
+}
+
+/* Botão WhatsApp Cloud API (anexo direto) */
+.btn-whatsapp-api {
+  background-color: #128c7e !important;
+  color: white !important;
+  position: relative;
+}
+
+.btn-whatsapp-api:hover {
+  background-color: #0f6b5f !important;
+  color: white !important;
+}
+
+/* Tooltip personalizado para WhatsApp API */
+.btn-whatsapp-api::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.btn-whatsapp-api:hover::after {
+  opacity: 1;
+}
+
+/* Melhorar espaçamento dos botões de ação */
+.acoes-lista {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.acoes-lista .btn-acao {
+  padding: 4px 6px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.acoes-lista .btn-acao:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Mobile actions melhoradas */
+.mobile-actions {
+  flex-wrap: wrap;
+  gap: 4px !important;
+}
+
+.mobile-actions .action-btn {
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+/* Responsivo para botões */
+@media (max-width: 768px) {
+  .acoes-lista {
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .acoes-lista .btn-acao {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .mobile-actions {
     justify-content: center;
   }
 } 

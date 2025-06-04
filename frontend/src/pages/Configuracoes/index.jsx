@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Row, Col, Form, Button, Alert, Spinner } from 'react-bootstrap';
+import { Container, Card, Row, Col, Form, Button, Alert, Spinner, Nav, Tab } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { configurationAPI } from '../../services/api';
 import { getUser } from '../../services/authService';
 import { toast } from 'react-toastify';
-import { FaSave, FaCog } from 'react-icons/fa';
+import { FaSave, FaCog, FaEnvelope, FaServer } from 'react-icons/fa';
+import SmtpConfig from './SmtpConfig';
 
 const Configuracoes = () => {
   const navigate = useNavigate();
@@ -13,29 +14,37 @@ const Configuracoes = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [configurations, setConfigurations] = useState([]);
+  const [activeTab, setActiveTab] = useState('sistema');
   
   // Configurações de estoque
   const [validateStockInQuotations, setValidateStockInQuotations] = useState(false);
   const [validateStockInOrders, setValidateStockInOrders] = useState(true);
 
-  // Verificar se o usuário é admin
+  // Verificar se o usuário é admin para algumas configurações
+  const user = getUser();
+  const isAdmin = user?.role === 'admin';
+
+  // Verificar permissão para acessar configurações
   useEffect(() => {
-    const user = getUser();
-    if (!user || user.role !== 'admin') {
-      navigate('/dashboard');
+    if (!user) {
+      navigate('/login');
+      return;
     }
-  }, [navigate]);
+  }, [navigate, user]);
 
   // Carregar configurações
   useEffect(() => {
     const loadConfigurations = async () => {
       try {
         setLoading(true);
+        
+        if (isAdmin) {
         const response = await configurationAPI.listAll();
         if (response.success) {
           setConfigurations(response.data);
         } else {
           setError('Erro ao carregar configurações');
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);
@@ -47,10 +56,12 @@ const Configuracoes = () => {
 
     const loadStockValidationSettings = async () => {
       try {
+        if (isAdmin) {
         const response = await configurationAPI.getStockValidationSettings();
         if (response.success && response.data) {
           setValidateStockInQuotations(response.data.validate_stock_in_quotations);
           setValidateStockInOrders(response.data.validate_stock_in_orders);
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar configurações de validação de estoque:', error);
@@ -59,7 +70,7 @@ const Configuracoes = () => {
 
     loadConfigurations();
     loadStockValidationSettings();
-  }, []);
+  }, [isAdmin]);
 
   // Salvar configurações de validação de estoque
   const handleSaveStockValidationSettings = async () => {
@@ -92,7 +103,7 @@ const Configuracoes = () => {
   return (
     <Container fluid className="p-4">
       <h1 className="page-title mb-4">
-        <FaCog className="me-2" /> Configurações do Sistema
+        <FaCog className="me-2" /> Configurações
       </h1>
 
       {error && <Alert variant="danger">{error}</Alert>}
@@ -105,10 +116,36 @@ const Configuracoes = () => {
           </Spinner>
         </div>
       ) : (
-        <>
-          <Card className="mb-4">
-            <Card.Header as="h5">Configurações de Estoque</Card.Header>
+        <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
+          <Card>
+            <Card.Header>
+              <Nav variant="tabs" className="card-header-tabs">
+                <Nav.Item>
+                  <Nav.Link eventKey="smtp">
+                    <FaEnvelope className="me-2" />
+                    Configurações de E-mail
+                  </Nav.Link>
+                </Nav.Item>
+                {isAdmin && (
+                  <Nav.Item>
+                    <Nav.Link eventKey="sistema">
+                      <FaServer className="me-2" />
+                      Configurações do Sistema
+                    </Nav.Link>
+                  </Nav.Item>
+                )}
+              </Nav>
+            </Card.Header>
+            
             <Card.Body>
+              <Tab.Content>
+                <Tab.Pane eventKey="smtp">
+                  <SmtpConfig />
+                </Tab.Pane>
+                
+                {isAdmin && (
+                  <Tab.Pane eventKey="sistema">
+                    <h5 className="mb-4">Configurações de Estoque</h5>
               <Form>
                 <Row>
                   <Col md={6}>
@@ -160,11 +197,12 @@ const Configuracoes = () => {
                   )}
                 </Button>
               </Form>
+                  </Tab.Pane>
+                )}
+              </Tab.Content>
             </Card.Body>
           </Card>
-
-          {/* Aqui poderiam ser adicionadas outras seções de configuração no futuro */}
-        </>
+        </Tab.Container>
       )}
       
       <div className="mt-4">

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo WhatsApp PDF - DSVENDAS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        
+        .whatsapp-icon {
+            font-size: 2em;
+            color: #25d366;
+        }
+        
+        .demo-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #25d366;
+        }
+        
+        .button {
+            background: #25d366;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.3s;
+        }
+        
+        .button:hover {
+            background: #128c7e;
+        }
+        
+        .button.secondary {
+            background: #007bff;
+        }
+        
+        .button.secondary:hover {
+            background: #0056b3;
+        }
+        
+        .result {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .explanation {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .step {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .step h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .whatsapp-preview {
+            background: #e5ddd5;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .message-bubble {
+            background: #dcf8c6;
+            padding: 10px 15px;
+            border-radius: 7.5px;
+            margin: 10px 0;
+            position: relative;
+            max-width: 300px;
+            margin-left: auto;
+        }
+        
+        .message-bubble::after {
+            content: '';
+            position: absolute;
+            right: -5px;
+            top: 10px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid #dcf8c6;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+        
+        .pdf-link {
+            color: #0084ff;
+            text-decoration: underline;
+            word-break: break-all;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span class="whatsapp-icon">📱</span> Demo WhatsApp PDF - DSVENDAS</h1>
+        
+        <div class="explanation">
+            <h3>📋 Como funciona o envio de PDF via WhatsApp:</h3>
+            <p>
+                ⚠️ <strong>PROBLEMA IDENTIFICADO:</strong> O preview bonito (como Facebook) <strong>NÃO funciona com localhost</strong>.
+                <br><br>
+                <strong>🔍 Por que não funciona localmente:</strong>
+                <br>❌ WhatsApp não consegue acessar `localhost:3001`
+                <br>❌ Não consegue ler as meta tags para preview
+                <br>❌ Só envia texto simples, sem preview bonito
+                <br><br>
+                <strong>✅ Como funciona em produção:</strong>
+                <br>1️⃣ Sistema roda em domínio público (ex: `https://seudominio.com.br`)
+                <br>2️⃣ WhatsApp consegue acessar a URL
+                <br>3️⃣ Lê as meta tags e gera preview bonito
+                <br>4️⃣ Mostra título, descrição e imagem (igual Facebook)
+                <br><br>
+                <strong>📱 Solução atual (funciona agora):</strong>
+                <br>🔹 Enviar link direto para download do PDF
+                <br>🔹 Em produção, implementar preview bonito
+                <br>🔹 Cliente baixa PDF normalmente
+            </p>
+        </div>
+        
+        <div class="demo-section">
+            <h2>🧪 Teste 1: Gerar Link de PDF</h2>
+            <p>Primeiro, vamos gerar um link de PDF para um orçamento de teste:</p>
+            <button class="button secondary" onclick="generatePdfLink()">Gerar Link PDF</button>
+            <div id="pdfResult" class="result"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>📱 Teste 2: Mensagem do WhatsApp Web</h2>
+            <p>Veja como fica a mensagem no WhatsApp Web (única opção disponível para navegadores):</p>
+            <button class="button" onclick="generateWhatsAppMessage()">Gerar Mensagem WhatsApp</button>
+            <div id="whatsappResult" class="result"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>🚀 Solução: Local vs Produção</h2>
+            <p>Veja a diferença entre teste local e como funciona em produção:</p>
+            
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <button class="button" onclick="testLocalSolution()">💻 Teste Local (Funciona Agora)</button>
+                <button class="button secondary" onclick="showProductionExample()">🌐 Exemplo Produção (Preview Bonito)</button>
+            </div>
+            
+            <div id="shareResult" class="result"></div>
+            
+            <div class="explanation" style="margin-top: 15px;">
+                <h4>🎯 Diferenças:</h4>
+                <p><strong>💻 Local (localhost:3001):</strong> Funciona, mas sem preview bonito no WhatsApp</p>
+                <p><strong>🌐 Produção (https://seudominio.com.br):</strong> Preview bonito igual Facebook</p>
+                <p><strong>🔧 Para implementar:</strong> Publicar em servidor com domínio real</p>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>📊 Status dos PDFs</h2>
+            <p>Veja quantos PDFs estão armazenados no servidor:</p>
+            <button class="button secondary" onclick="checkPdfStatus()">Verificar Status</button>
+            <div id="statusResult" class="result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>💡 Para usar no seu frontend:</h3>
+            <pre><code>// 1. Gerar URL do WhatsApp
+const response = await axios.post('/api/orcamentos/123/whatsapp', {
+  phoneNumber: '11999999999',
+  customMessage: 'Mensagem personalizada'
+});
+
+// 2. Abrir WhatsApp
+window.open(response.data.data.webUrl, '_blank');
+
+// 3. O PDF fica disponível por 24 horas no link:
+// response.data.data.pdfDownloadUrl</code></pre>
+        </div>
+        
+        <div class="step">
+            <h3>🚀 Implementação inteligente (Nativo + Fallback):</h3>
+            <pre><code>async function shareOrcamentoWhatsApp(orcamentoId, phoneNumber) {
+  try {
+    // 1. Verificar se suporta compartilhamento nativo
+    const canUseNative = navigator.share && navigator.canShare;
+    
+    // 2. Chamar API com o tipo apropriado
+    const response = await axios.post(`/api/orcamentos/${orcamentoId}/whatsapp-advanced`, {
+      phoneNumber: phoneNumber,
+      shareType: canUseNative ? 'native' : 'link'
+    });
+    
+    const data = response.data.data;
+    
+    // 3. Tentar compartilhamento nativo primeiro
+    if (canUseNative && data.nativeShare.base64) {
+      try {
+        // Converter base64 para blob
+        const pdfBlob = base64ToBlob(data.nativeShare.base64, 'application/pdf');
+        const pdfFile = new File([pdfBlob], data.nativeShare.filename, { 
+          type: 'application/pdf' 
+        });
+        
+        // Compartilhar nativamente
+        await navigator.share({
+          title: '📄 Orçamento DSVENDAS',
+          text: data.message,
+          files: [pdfFile]
+        });
+        
+        return { success: true, method: 'native' };
+      } catch (nativeError) {
+        console.log('Compartilhamento nativo falhou, usando fallback...');
+      }
+    }
+    
+    // 4. Fallback: abrir WhatsApp Web tradicional
+    window.open(data.webUrl, '_blank');
+    return { success: true, method: 'web' };
+    
+  } catch (error) {
+    console.error('Erro ao compartilhar:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+function base64ToBlob(base64, mimeType) {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
+}</code></pre>
+        </div>
+        
+        <div class="explanation">
+            <h3>📱 Vantagens de cada método:</h3>
+            <p><strong>🚀 Compartilhamento Nativo:</strong></p>
+            <ul style="margin-left: 20px;">
+                <li>✅ Anexa PDF diretamente no WhatsApp</li>
+                <li>✅ Experiência mais fluida para o usuário</li>
+                <li>✅ Funciona offline depois do download</li>
+                <li>✅ Não depende de links que podem expirar</li>
+                <li>⚠️ Só funciona em dispositivos móveis modernos</li>
+            </ul>
+            
+            <p><strong>🔗 Compartilhamento Web:</strong></p>
+            <ul style="margin-left: 20px;">
+                <li>✅ Funciona em qualquer navegador</li>
+                <li>✅ Compatível com desktop e mobile</li>
+                <li>✅ Não depende de APIs específicas</li>
+                <li>⚠️ Cliente precisa clicar no link</li>
+                <li>⚠️ Links expiram em 24 horas</li>
+            </ul>
+        </div>
+        
+        <div class="explanation">
+            <h3>🔍 Realidade das Soluções:</h3>
+            
+            <p><strong>❌ Por que não funciona localmente:</strong></p>
+            <ul style="margin-left: 20px; color: #721c24;">
+                <li>❌ WhatsApp não consegue acessar localhost:3001</li>
+                <li>❌ Preview bonito precisa de URL pública</li>
+                <li>❌ Meta tags só funcionam com domínio real</li>
+                <li>❌ Fica apenas texto simples na mensagem</li>
+            </ul>
+            
+            <p><strong>✅ Nossa solução atual (funciona agora):</strong></p>
+            <ul style="margin-left: 20px; color: #155724;">
+                <li>✅ Gera PDF no servidor</li>
+                <li>✅ Cria link seguro e temporário</li>
+                <li>✅ Abre WhatsApp Web com mensagem</li>
+                <li>✅ Cliente baixa PDF clicando no link</li>
+                <li>✅ Funciona em qualquer navegador</li>
+            </ul>
+            
+            <p><strong>🎯 Para preview bonito em produção:</strong></p>
+            <ul style="margin-left: 20px; color: #856404;">
+                <li>🌐 Publicar sistema em servidor com domínio (ex: https://seudominio.com.br)</li>
+                <li>🔧 Usar BASE_URL=https://seudominio.com.br no .env</li>
+                <li>📱 WhatsApp conseguirá acessar as URLs e fazer preview</li>
+                <li>🎉 Preview bonito aparecerá automaticamente (igual Facebook)</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <h3>🚀 Como implementar preview bonito em produção:</h3>
+            <pre><code>// 1. Publicar sistema em servidor
+// Ex: DigitalOcean, AWS, Heroku, etc.
+
+// 2. Configurar domínio
+// Ex: https://seudominio.com.br
+
+// 3. Atualizar .env em produção
+BASE_URL=https://seudominio.com.br
+PORT=3001
+
+// 4. Usar nossa API normalmente
+const response = await axios.post('/api/orcamentos/123/whatsapp', {
+  phoneNumber: '11999999999',
+  usePreview: true  // ← Ativa preview bonito
+});
+
+// 5. WhatsApp mostrará preview bonito automaticamente!
+window.open(response.data.data.webUrl, '_blank');</code></pre>
+        </div>
+        
+        <div class="explanation">
+            <h3>📱 Resultado em produção:</h3>
+            <p><strong>WhatsApp mostrará:</strong></p>
+            <ul style="margin-left: 20px; color: #155724;">
+                <li>🖼️ Imagem/logo da empresa</li>
+                <li>📋 Título: "Orçamento #123 - DSVENDAS"</li>
+                <li>📝 Descrição: "Orçamento digital da DSVENDAS..."</li>
+                <li>🔗 Link clicável para página bonita</li>
+                <li>📄 Botão de download do PDF na página</li>
+            </ul>
+            <p><strong>🎯 Experiência idêntica ao Facebook!</strong></p>
+        </div>
+        
+        <div class="demo-section">
+            <h2>🚀 SOLUÇÃO DEFINITIVA: WhatsApp Cloud API</h2>
+            <p>Com a API oficial do WhatsApp conseguimos anexar PDFs diretamente! 🎉</p>
+            
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <button class="button" onclick="testWhatsAppCloudAPI()">🧪 Testar Configuração API</button>
+                <button class="button secondary" onclick="showCloudAPIExample()">📋 Exemplo de Uso</button>
+            </div>
+            
+            <div id="cloudApiResult" class="result"></div>
+            
+            <div class="explanation" style="margin-top: 15px;">
+                <h4>🎯 Vantagens da API Oficial:</h4>
+                <p><strong>✅ PDF anexado diretamente</strong> - Como apps nativos!</p>
+                <p><strong>✅ Não abre WhatsApp Web</strong> - Envio automático</p>
+                <p><strong>✅ Funciona com localhost</strong> - Não precisa domínio público</p>
+                <p><strong>✅ Status de entrega</strong> - Sabe se foi entregue</p>
+                <p><strong>✅ Mais profissional</strong> - Sem limitações de browser</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function generatePdfLink() {
+            const resultDiv = document.getElementById('pdfResult');
+            resultDiv.innerHTML = '<div class="status">Gerando PDF...</div>';
+            resultDiv.classList.add('show');
+            
+            try {
+                const response = await fetch('/api/debug/create-test-pdf', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ PDF gerado com sucesso!</div>
+                        <p><strong>📄 Arquivo:</strong> ${data.data.filename}</p>
+                        <p><strong>📏 Tamanho:</strong> ${data.data.size} bytes</p>
+                        <p><strong>🔗 Link:</strong> <a href="${data.data.downloadUrl}" target="_blank" class="pdf-link">${data.data.downloadUrl}</a></p>
+                        <p><strong>🕒 Expira em:</strong> 24 horas</p>
+                        <br>
+                        <a href="${data.data.downloadUrl}" target="_blank" class="button">📥 Baixar PDF de Teste</a>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="status error">❌ Erro: ${data.message}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="status error">❌ Erro: ${error.message}</div>`;
+            }
+        }
+        
+        async function generateWhatsAppMessage() {
+            const resultDiv = document.getElementById('whatsappResult');
+            resultDiv.innerHTML = '<div class="status">Gerando mensagem...</div>';
+            resultDiv.classList.add('show');
+            
+            // Simular uma mensagem do WhatsApp
+            const mockMessage = `🏢 *DSVENDAS* - Orçamento Digital
+
+Olá *Cliente Teste*! 👋
+
+📋 *Orçamento #123*
+📅 Data: ${new Date().toLocaleDateString('pt-BR')}
+💰 Valor: R$ 1.234,56
+👨‍💼 Vendedor: João Silva
+
+📄 *BAIXAR ORÇAMENTO EM PDF:*
+http://localhost:3001/api/download-pdf/exemplo_token_123
+
+💡 *Como baixar:*
+1️⃣ Clique no link acima
+2️⃣ O PDF será baixado automaticamente
+3️⃣ Válido por 24 horas
+
+📞 Dúvidas? Entre em contato conosco!
+
+Atenciosamente,
+*Equipe DSVENDAS* ✨`;
+            
+            resultDiv.innerHTML = `
+                <div class="status success">✅ Mensagem gerada!</div>
+                <h4>📱 Preview da mensagem no WhatsApp:</h4>
+                <div class="whatsapp-preview">
+                    <div class="message-bubble">
+                        ${mockMessage.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+                <p><em>⚠️ O cliente precisa clicar no link para baixar o PDF</em></p>
+            `;
+        }
+        
+        async function checkPdfStatus() {
+            const resultDiv = document.getElementById('statusResult');
+            resultDiv.innerHTML = '<div class="status">Verificando status...</div>';
+            resultDiv.classList.add('show');
+            
+            try {
+                const response = await fetch('/api/debug/temp-pdfs');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ Status obtido!</div>
+                        <p><strong>📊 Total de PDFs:</strong> ${data.data.total}</p>
+                        <p><strong>🔄 Sistema inicializado:</strong> ${data.data.initialized ? 'Sim' : 'Não'}</p>
+                        <pre>${JSON.stringify(data.data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="status error">❌ Erro: ${data.message}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="status error">❌ Erro: ${error.message}</div>`;
+            }
+        }
+        
+        async function testLocalSolution() {
+            const resultDiv = document.getElementById('shareResult');
+            resultDiv.innerHTML = '<div class="status">Testando solução local...</div>';
+            resultDiv.classList.add('show');
+            
+            try {
+                // Gerar PDF de teste
+                const pdfResponse = await fetch('/api/debug/create-test-pdf', { method: 'POST' });
+                const pdfData = await pdfResponse.json();
+                
+                if (pdfData.success) {
+                    // Simular mensagem do WhatsApp
+                    const message = `📋 *Orçamento #TESTE* - DSVENDAS
+
+Olá! 👋
+
+📄 *BAIXAR ORÇAMENTO EM PDF:*
+${pdfData.data.downloadUrl}
+
+💡 *Como baixar:*
+1️⃣ Clique no link acima
+2️⃣ O PDF será baixado automaticamente
+3️⃣ Válido por 24 horas
+
+Atenciosamente,
+*Equipe DSVENDAS* ✨`;
+                    
+                    // Gerar URL do WhatsApp (exemplo)
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                    
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ Solução local testada!</div>
+                        <p>🔗 Método tradicional: Link do WhatsApp com mensagem de texto.</p>
+                        <div class="whatsapp-preview">
+                            <div class="message-bubble">
+                                ${message.replace(/\n/g, '<br>')}
+                            </div>
+                        </div>
+                        <a href="${whatsappUrl}" target="_blank" class="button">📱 Abrir WhatsApp</a>
+                        <p><em>⚠️ O cliente precisa clicar no link dentro da mensagem para baixar o PDF</em></p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="status error">❌ Erro ao gerar PDF: ${pdfData.message}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="status error">❌ Erro: ${error.message}</div>`;
+            }
+        }
+        
+        async function showProductionExample() {
+            const resultDiv = document.getElementById('shareResult');
+            resultDiv.innerHTML = '<div class="status">Gerando exemplo de produção...</div>';
+            resultDiv.classList.add('show');
+            
+            try {
+                // Gerar PDF de teste
+                const pdfResponse = await fetch('/api/debug/create-test-pdf', { method: 'POST' });
+                const pdfData = await pdfResponse.json();
+                
+                if (pdfData.success) {
+                    // Simular mensagem do WhatsApp
+                    const message = `🏢 *DSVENDAS* - Orçamento Digital
+
+Olá *Cliente Teste*! 👋
+
+📋 *Orçamento #TESTE*
+📅 Data: ${new Date().toLocaleDateString('pt-BR')}
+💰 Valor: R$ 1.234,56
+👨‍💼 Vendedor: João Silva
+
+🖼️ *VER E BAIXAR ORÇAMENTO:*
+${window.location.origin}${pdfData.data.downloadUrl}
+
+💡 *Preview inteligente:*
+1️⃣ Clique no link para ver o preview
+2️⃣ Baixe o PDF diretamente da página
+3️⃣ Link válido por 24 horas
+
+📞 Dúvidas? Entre em contato conosco!
+
+Atenciosamente,
+*Equipe DSVENDAS* ✨`;
+                    
+                    // Gerar URL do WhatsApp
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                    
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ Exemplo de produção gerado!</div>
+                        <p>🎉 <strong>Agora SIM parece que o arquivo está anexado!</strong></p>
+                        
+                        <h4>🖼️ Como fica no WhatsApp:</h4>
+                        <div style="background: #e5ddd5; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                            <div style="background: #dcf8c6; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+                                📋 Orçamento #TESTE - DSVENDAS<br>
+                                <small>Orçamento digital da DSVENDAS. Clique para visualizar...</small>
+                            </div>
+                            <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; font-size: 12px;">
+                                <strong>🖼️ PREVIEW BONITO</strong><br>
+                                📋 Orçamento #TESTE - DSVENDAS<br>
+                                💡 Orçamento digital da DSVENDAS. Clique para visualizar e baixar o PDF.
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; margin: 15px 0;">
+                            <a href="${whatsappUrl}" target="_blank" class="button">📱 Abrir WhatsApp</a>
+                            <a href="${pdfData.data.downloadUrl}" target="_blank" class="button secondary">📄 Ver PDF Real</a>
+                        </div>
+                        
+                        <div class="explanation" style="margin-top: 15px;">
+                            <h4>🔍 O que acontece:</h4>
+                            <p>✅ WhatsApp detecta nosso link e mostra preview bonito</p>
+                            <p>✅ Cliente vê título, descrição e imagem</p>
+                            <p>✅ Clica no preview e vai para nossa página bonita</p>
+                            <p>✅ Baixa o PDF de lá</p>
+                            <p>🎯 <strong>Resultado:</strong> Experiência similar ao Facebook!</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="status error">❌ Erro ao gerar PDF: ${pdfData.message}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="status error">❌ Erro: ${error.message}</div>`;
+            }
+        }
+        
+        async function testWhatsAppCloudAPI() {
+            const resultDiv = document.getElementById('cloudApiResult');
+            resultDiv.innerHTML = '<div class="status">Testando configuração da WhatsApp Cloud API...</div>';
+            resultDiv.classList.add('show');
+            
+            try {
+                const response = await fetch('/api/whatsapp-api/test');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ WhatsApp Cloud API configurada e funcionando!</div>
+                        <p><strong>📱 Conta:</strong> ${data.account?.display_phone_number || 'Verificada'}</p>
+                        <p><strong>🎯 Capacidades:</strong></p>
+                        <ul style="margin-left: 20px;">
+                            ${data.capabilities.map(cap => `<li>${cap}</li>`).join('')}
+                        </ul>
+                        <p><em>🎉 Pronto para anexar PDFs diretamente!</em></p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">❌ ${data.message}</div>
+                        ${data.configured === false ? `
+                        <div style="margin-top: 15px;">
+                            <h4>🔧 Como configurar:</h4>
+                            <ol style="margin-left: 20px;">
+                                <li>Acesse <a href="https://developers.facebook.com/apps/" target="_blank">Facebook Developers</a></li>
+                                <li>Crie uma aplicação WhatsApp Business</li>
+                                <li>Obtenha Phone Number ID e Access Token</li>
+                                <li>Configure no .env:
+                                    <pre style="background: #f0f0f0; padding: 10px; margin: 10px 0;">
+WHATSAPP_PHONE_NUMBER_ID=123456789
+WHATSAPP_ACCESS_TOKEN=EAAxxxxx...</pre>
+                                </li>
+                            </ol>
+                        </div>
+                        ` : ''}
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ Erro ao testar API</div>
+                    <p>Detalhes: ${error.message}</p>
+                    <p><em>A API pode não estar configurada ainda.</em></p>
+                `;
+            }
+        }
+        
+        async function showCloudAPIExample() {
+            const resultDiv = document.getElementById('cloudApiResult');
+            resultDiv.innerHTML = '<div class="status">Mostrando exemplo de uso...</div>';
+            resultDiv.classList.add('show');
+            
+            resultDiv.innerHTML = `
+                <div class="status success">📋 Exemplo de uso da WhatsApp Cloud API</div>
+                
+                <h4>🚀 Como usar no seu frontend:</h4>
+                <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; overflow-x: auto;"><code>// Enviar orçamento via WhatsApp Cloud API (ANEXO DIRETO!)
+const response = await axios.post('/api/orcamentos/123/whatsapp-api', {
+  phoneNumber: '11999999999'
+});
+
+if (response.data.success) {
+  console.log('✅ PDF enviado e anexado diretamente!');
+  console.log('📱 Message ID:', response.data.data.whatsapp.messageId);
+  console.log('📄 Document ID:', response.data.data.whatsapp.documentId);
+} else {
+  console.log('❌ Erro:', response.data.message);
+}</code></pre>
+
+                <h4>📱 O que acontece:</h4>
+                <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <p><strong>1️⃣</strong> Sistema gera PDF do orçamento</p>
+                    <p><strong>2️⃣</strong> Faz upload para servidores do WhatsApp</p>
+                    <p><strong>3️⃣</strong> Envia mensagem de texto primeiro</p>
+                    <p><strong>4️⃣</strong> Envia PDF como anexo direto</p>
+                    <p><strong>5️⃣</strong> Cliente recebe PDF anexado (como app nativo!)</p>
+                </div>
+                
+                <h4>🎯 Vantagens:</h4>
+                <ul style="margin-left: 20px; color: #155724;">
+                    <li>✅ PDF aparece como anexo na conversa</li>
+                    <li>✅ Não precisa clicar em links</li>
+                    <li>✅ Funciona com localhost</li>
+                    <li>✅ Envio automático</li>
+                    <li>✅ Status de entrega</li>
+                    <li>✅ Mais profissional</li>
+                </ul>
+            `;
+        }
+    </script>
+</body>
+</html> 

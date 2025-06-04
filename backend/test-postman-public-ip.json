@@ -1,0 +1,102 @@
+{
+  "ip_publico": "187.2.149.217",
+  "porta": "3001",
+  "base_url": "http://187.2.149.217:3001",
+  
+  "testes_postman": [
+    {
+      "nome": "🎯 TESTE PRINCIPAL - Cliente 44787",
+      "metodo": "POST",
+      "url": "http://187.2.149.217:3001/api/webhook/whatsapp/test",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304",
+        "message": "Código: 44787"
+      },
+      "resultado_esperado": "✅ Cliente encontrado → Orçamento enviado via WhatsApp"
+    },
+    {
+      "nome": "📱 Teste Só Número",
+      "metodo": "POST",
+      "url": "http://187.2.149.217:3001/api/webhook/whatsapp/test",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304",
+        "message": "44787"
+      },
+      "resultado_esperado": "✅ Reconhece número como código do cliente"
+    },
+    {
+      "nome": "📝 Teste Formato Cliente",
+      "metodo": "POST",
+      "url": "http://187.2.149.217:3001/api/webhook/whatsapp/test",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304",
+        "message": "Cliente 44787"
+      },
+      "resultado_esperado": "✅ Encontra cliente pelo formato 'Cliente XXXX'"
+    },
+    {
+      "nome": "❓ Teste Mensagem Genérica",
+      "metodo": "POST",
+      "url": "http://187.2.149.217:3001/api/webhook/whatsapp/test",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304",
+        "message": "Oi, quero meu orçamento"
+      },
+      "resultado_esperado": "📋 Envia instruções de uso"
+    },
+    {
+      "nome": "❌ Teste Cliente Inexistente",
+      "metodo": "POST", 
+      "url": "http://187.2.149.217:3001/api/webhook/whatsapp/test",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phoneNumber": "5518996334304",
+        "message": "Código: 99999"
+      },
+      "resultado_esperado": "⚠️ Informa que cliente não foi encontrado"
+    }
+  ],
+  
+  "testes_verificacao": [
+    {
+      "nome": "🔍 Status do Webhook",
+      "metodo": "GET",
+      "url": "http://187.2.149.217:3001/api/webhook/whatsapp/status",
+      "resultado_esperado": "✅ Informações do webhook funcionando"
+    },
+    {
+      "nome": "🔐 Verificação Facebook",
+      "metodo": "GET",
+      "url": "http://187.2.149.217:3001/api/webhook/whatsapp?hub.mode=subscribe&hub.challenge=12345&hub.verify_token=DSVENDAS_WEBHOOK_TOKEN",
+      "resultado_esperado": "✅ Retorna: 12345"
+    }
+  ],
+
+  "instrucoes_postman": {
+    "passo_1": "Configure Postman:",
+    "passo_2": "Método: POST",
+    "passo_3": "URL: http://187.2.149.217:3001/api/webhook/whatsapp/test",
+    "passo_4": "Headers → Add: Content-Type: application/json",
+    "passo_5": "Body → Raw → JSON:",
+    "exemplo_json": {
+      "phoneNumber": "5518996334304", 
+      "message": "Código: 44787"
+    },
+    "passo_6": "Clique em SEND",
+    "passo_7": "Verifique a resposta e os logs no console do servidor"
+  }
+} 
