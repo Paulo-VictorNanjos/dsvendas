@@ -188,6 +188,40 @@ export const calcularTributos = (item, dadosFiscais, dadosClassificacao, ufClien
     };
   }
   
+  // NOVA VALIDAÇÃO: CST 00 é incompatível com ICMS-ST
+  // CST 00 = Tributada integralmente, não pode ter ST mesmo que icms_st='S'
+  if (cstIcms === '00' && icmsSt === 'S') {
+    console.warn(`INCONSISTÊNCIA FISCAL: CST ${cstIcms} (Tributada integralmente) está configurado com icms_st='S'. CST 00 é incompatível com ICMS-ST.`);
+    
+    // Calcular apenas os valores básicos de ICMS
+    const baseIcms = redIcms > 0 ? arredondar(valorLiquido * (1 - (redIcms / 100))) : valorLiquido;
+    const valorIcms = arredondar(baseIcms * (aliqIcms / 100));
+    const valorTotalComImpostos = arredondar(valorLiquido + valorIpi);
+    
+    return {
+      valorBruto,
+      valorDesconto,
+      valorLiquido,
+      baseIcms,
+      aliqIcms,
+      valorIcms,
+      aliqIpi,
+      valorIpi,
+      temST: false,
+      baseIcmsSt: 0,
+      valorIcmsSt: 0,
+      valorFcpSt: 0,
+      valorTotalSt: 0,
+      valorTotalComImpostos,
+      cstIcms,
+      icmsSt: 'N',
+      isImportado,
+      detalhesCalculo: null,
+      inconsistenciaDetectada: true,
+      mensagem: `INCONSISTÊNCIA FISCAL: CST ${cstIcms} (Tributada integralmente) é incompatível com ICMS-ST. Verificar configuração fiscal.`
+    };
+  }
+  
   // Verificar se tem ST: primeira verificação pelo campo icms_st, depois pelo CST
   const temST = icmsSt === 'S' || verificarCSTSubstituicaoTributaria(cstIcms);
   

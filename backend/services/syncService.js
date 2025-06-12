@@ -397,6 +397,8 @@ class SyncService {
   // Buscar clientes com filtro
   async searchCustomers(termo) {
     try {
+      console.log(`[syncService] Buscando clientes com termo: "${termo}"`);
+      
       // Normaliza o termo de busca para insensitive case
       const termoBusca = termo.toLowerCase();
       
@@ -421,10 +423,26 @@ class SyncService {
           'municipio'
         )
         .whereNull('dt_exc')  // Apenas clientes não excluídos
-        .whereRaw('LOWER(razao) LIKE ?', [`%${termoBusca}%`])
-        .orWhereRaw('LOWER(nome) LIKE ?', [`%${termoBusca}%`])
-        .orWhereRaw('LOWER(codigo::text) LIKE ?', [`%${termoBusca}%`])
-        .orWhereRaw('LOWER(cnpj) LIKE ?', [`%${termoBusca}%`]);
+        .where(function() {
+          this.whereRaw('LOWER(razao) LIKE ?', [`%${termoBusca}%`])
+            .orWhereRaw('LOWER(nome) LIKE ?', [`%${termoBusca}%`])
+            .orWhereRaw('LOWER(codigo::text) LIKE ?', [`%${termoBusca}%`])
+            .orWhereRaw('LOWER(cnpj) LIKE ?', [`%${termoBusca}%`]);
+        })
+        .orderBy('razao')
+        .limit(50);
+      
+      console.log(`[syncService] Encontrados ${clientes.length} clientes para o termo "${termo}"`);
+      
+      if (clientes.length > 0) {
+        console.log(`[syncService] Primeiros resultados:`, 
+          clientes.slice(0, 3).map(c => ({
+            codigo: c.codigo,
+            razao: c.razao?.substring(0, 30),
+            nome: c.nome?.substring(0, 30)
+          }))
+        );
+      }
       
       // Processar cada cliente para garantir UF correta
       const clientesProcessados = [];

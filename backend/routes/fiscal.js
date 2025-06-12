@@ -1,7 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const knex = require('../database');
-const { erp_db } = require('../config/db_connections');
+const logger = require('../utils/logger');
+const knex = require('../config/database');
+const { getDadosFiscaisProduto, calcularTributos, getRegrasIcms, getDadosClassFiscal } = require('../services/productFiscalRulesService');
+const { checkAuth } = require('../middleware/auth');
+const erpDatabase = require('../config/erp-database');
+const fiscalRulesService = require('../services/fiscalRulesService');
+const { validarRegraFiscal, gerarRelatorioInconsistencias, validarCSTcomICMSST } = require('../utils/fiscalValidation');
+const FiscalLogger = require('../utils/fiscalLogger');
+const fiscalAuditService = require('../services/fiscalAuditService');
 
 /**
  * @route   GET /api/fiscal/verificar-regra-icms/:codigo/:uf
@@ -63,7 +70,7 @@ router.get('/produto-erp/:codigo', async (req, res) => {
   
   try {
     // Verificar se temos conexão ERP configurada
-    if (!erp_db) {
+    if (!erpDatabase) {
       // Fallback para o banco local se não tivermos conexão ERP
       const dadosFiscais = await knex('produtos')
         .where({ codigo })
@@ -74,7 +81,7 @@ router.get('/produto-erp/:codigo', async (req, res) => {
     }
     
     // Buscar do banco ERP (usando a mesma estrutura do sistema mobile)
-    const dadosFiscais = await erp_db.raw(`
+    const dadosFiscais = await erpDatabase.raw(`
       SELECT 
         aliq_ipi, 
         cod_regra_icms, 
@@ -118,7 +125,7 @@ router.get('/regras-icms-erp', async (req, res) => {
   
   try {
     // Verificar se temos conexão ERP configurada
-    if (!erp_db) {
+    if (!erpDatabase) {
       // Fallback para o banco local se não tivermos conexão ERP
       const regrasIcms = await knex('regras_icms')
         .where({ codigo, uf })
@@ -128,7 +135,7 @@ router.get('/regras-icms-erp', async (req, res) => {
     }
     
     // Buscar regras ICMS do banco ERP (seguindo a mesma estrutura do sistema mobile)
-    const regrasIcms = await erp_db.raw(`
+    const regrasIcms = await erpDatabase.raw(`
       SELECT 
         r.codigo, 
         r.acrescimo_icms, 
@@ -192,7 +199,7 @@ router.get('/classificacao-fiscal-erp', async (req, res) => {
   
   try {
     // Verificar se temos conexão ERP configurada
-    if (!erp_db) {
+    if (!erpDatabase) {
       // Fallback para o banco local
       const classFiscal = await knex('class_fiscal_dados')
         .where({ 
@@ -209,7 +216,7 @@ router.get('/classificacao-fiscal-erp', async (req, res) => {
     }
     
     // Buscar classificação fiscal do banco ERP
-    const classFiscal = await erp_db.raw(`
+    const classFiscal = await erpDatabase.raw(`
       SELECT 
         cf.codigo AS cod_class_fiscal,
         cf.cod_ncm,
@@ -306,10 +313,10 @@ router.get('/verificar-st/:codigo/:uf', async (req, res) => {
     // Etapa 1: Buscar o cod_regra_icms do produto
     let codRegraIcms = null;
     
-    if (erp_db) {
+    if (erpDatabase) {
       // Buscar no banco ERP (prioridade)
       try {
-        const regraFiscal = await erp_db.raw(`
+        const regraFiscal = await erpDatabase.raw(`
           SELECT cod_regra_icms 
           FROM regras_fiscais_produtos 
           WHERE cod_produto = ? 
@@ -350,10 +357,10 @@ router.get('/verificar-st/:codigo/:uf', async (req, res) => {
     let icmsSt = '';
     let detalhes = {};
     
-    if (erp_db) {
+    if (erpDatabase) {
       // Buscar no banco ERP (prioridade)
       try {
-        const regrasIcms = await erp_db.raw(`
+        const regrasIcms = await erpDatabase.raw(`
           SELECT 
             i.st_icms_contr, 
             i.icms_st, 
@@ -476,6 +483,362 @@ router.get('/verificar-st/:codigo/:uf', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Erro ao verificar se produto tem ST',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/fiscal/validar-inconsistencias/:cod_regra_icms
+ * @desc    Validar inconsistências fiscais de uma regra ICMS
+ * @access  Privado
+ */
+router.get('/validar-inconsistencias/:cod_regra_icms', async (req, res) => {
+  try {
+    const { cod_regra_icms } = req.params;
+    
+    logger.info(`Validando inconsistências fiscais para regra ICMS: ${cod_regra_icms}`);
+    
+    // Buscar todas as UFs para essa regra ICMS
+    const regrasIcms = await knex('regras_icms_itens')
+      .where('cod_regra_icms', cod_regra_icms)
+      .where('cod_empresa', 1);
+    
+    if (regrasIcms.length === 0) {
+      return res.json({
+        success: false,
+        message: `Nenhuma regra ICMS encontrada para código ${cod_regra_icms}`
+      });
+    }
+    
+    const todasInconsistencias = [];
+    
+    // Validar cada UF
+    for (const regra of regrasIcms) {
+      const validacao = validarRegraFiscal(regra);
+      
+      if (!validacao.valido) {
+        todasInconsistencias.push(...validacao.inconsistencias);
+      }
+    }
+    
+    const relatorio = gerarRelatorioInconsistencias(todasInconsistencias);
+    
+    return res.json({
+      success: true,
+      codRegraIcms: cod_regra_icms,
+      totalRegras: regrasIcms.length,
+      totalInconsistencias: todasInconsistencias.length,
+      inconsistencias: todasInconsistencias,
+      relatorio: relatorio
+    });
+  } catch (error) {
+    logger.error(`Erro ao validar inconsistências fiscais: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro ao validar inconsistências fiscais',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/fiscal/validar-todas-inconsistencias
+ * @desc    Validar inconsistências fiscais de todas as regras ICMS
+ * @access  Privado
+ */
+router.get('/validar-todas-inconsistencias', async (req, res) => {
+  try {
+    logger.info('Iniciando validação de todas as inconsistências fiscais');
+    
+    // Buscar todas as regras ICMS
+    const regrasIcms = await knex('regras_icms_itens')
+      .where('cod_empresa', 1)
+      .orderBy(['cod_regra_icms', 'uf']);
+    
+    if (regrasIcms.length === 0) {
+      return res.json({
+        success: false,
+        message: 'Nenhuma regra ICMS encontrada no sistema'
+      });
+    }
+    
+    const todasInconsistencias = [];
+    const regrasPorCodigo = {};
+    
+    // Agrupar regras por código
+    regrasIcms.forEach(regra => {
+      if (!regrasPorCodigo[regra.cod_regra_icms]) {
+        regrasPorCodigo[regra.cod_regra_icms] = [];
+      }
+      regrasPorCodigo[regra.cod_regra_icms].push(regra);
+    });
+    
+    // Validar cada regra
+    for (const regra of regrasIcms) {
+      const validacao = validarRegraFiscal(regra);
+      
+      if (!validacao.valido) {
+        todasInconsistencias.push(...validacao.inconsistencias);
+      }
+    }
+    
+    // Estatísticas
+    const stats = {
+      totalRegras: regrasIcms.length,
+      totalRegrasCodigo: Object.keys(regrasPorCodigo).length,
+      totalInconsistencias: todasInconsistencias.length,
+      erros: todasInconsistencias.filter(inc => inc.severidade === 'ERRO').length,
+      avisos: todasInconsistencias.filter(inc => inc.severidade === 'AVISO').length
+    };
+    
+    const relatorio = gerarRelatorioInconsistencias(todasInconsistencias);
+    
+    return res.json({
+      success: true,
+      stats: stats,
+      inconsistencias: todasInconsistencias,
+      relatorio: relatorio
+    });
+  } catch (error) {
+    logger.error(`Erro ao validar todas as inconsistências fiscais: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro ao validar todas as inconsistências fiscais',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/fiscal/debug-produto/:codigo
+ * @desc    Debug - verificar de onde vêm os dados fiscais inconsistentes
+ * @access  Privado
+ */
+router.get('/debug-produto/:codigo', async (req, res) => {
+  try {
+    const { codigo } = req.params;
+    
+    logger.info(`Debug fiscal para produto: ${codigo}`);
+    
+    // 1. Buscar dados do produto
+    const produto = await knex('produtos')
+      .where('codigo', codigo)
+      .first();
+    
+    // 2. Buscar regras fiscais do produto
+    const regrasFiscaisProduto = await knex('regras_fiscais_produtos')
+      .where('cod_produto', codigo)
+      .first();
+    
+    // 3. Buscar regras ICMS para diferentes UFs (se existir cod_regra_icms)
+    let regrasIcmsRS = null;
+    let regrasIcmsSP = null;
+    
+    if (regrasFiscaisProduto?.cod_regra_icms) {
+      regrasIcmsRS = await knex('regras_icms_itens')
+        .where({
+          'cod_regra_icms': regrasFiscaisProduto.cod_regra_icms,
+          'uf': 'RS'
+        })
+        .first();
+        
+      regrasIcmsSP = await knex('regras_icms_itens')
+        .where({
+          'cod_regra_icms': regrasFiscaisProduto.cod_regra_icms,
+          'uf': 'SP'
+        })
+        .first();
+    }
+    
+    return res.json({
+      success: true,
+      debug: {
+        produto: produto,
+        regrasFiscaisProduto: regrasFiscaisProduto,
+        regrasIcmsRS: regrasIcmsRS,
+        regrasIcmsSP: regrasIcmsSP,
+        analise: {
+          temRegraFiscal: !!regrasFiscaisProduto,
+          codRegraIcms: regrasFiscaisProduto?.cod_regra_icms,
+          temStIcmsNaRegraFiscal: regrasFiscaisProduto && 'st_icms' in regrasFiscaisProduto,
+          temIcmsStNaRegraFiscal: regrasFiscaisProduto && 'icms_st' in regrasFiscaisProduto,
+          cstRS: regrasIcmsRS?.st_icms,
+          icmsStRS: regrasIcmsRS?.icms_st,
+          cstSP: regrasIcmsSP?.st_icms,
+          icmsStSP: regrasIcmsSP?.icms_st
+        }
+      }
+    });
+  } catch (error) {
+    logger.error(`Erro no debug fiscal: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro no debug fiscal',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/fiscal/auditar-produto/:codigo/:uf?
+ * @desc    Auditar consistência fiscal de um produto
+ * @access  Privado
+ */
+router.get('/auditar-produto/:codigo/:uf?', async (req, res) => {
+  try {
+    const { codigo, uf } = req.params;
+    
+    FiscalLogger.separador(`AUDITORIA PRODUTO ${codigo}`);
+    
+    const audit = await fiscalAuditService.auditarProduto(codigo, uf);
+    const relatorio = fiscalAuditService.gerarRelatorio(audit);
+    
+    return res.json({
+      success: true,
+      audit: audit,
+      relatorio: relatorio,
+      resumo: {
+        inconsistencias: audit.inconsistencias.length,
+        recomendacoes: audit.recomendacoes.length,
+        criticidade_maxima: audit.inconsistencias.reduce((max, inc) => {
+          const prioridades = { 'CRITICA': 3, 'ALTA': 2, 'MEDIA': 1, 'BAIXA': 0 };
+          const prioridadeAtual = prioridades[inc.severidade] || 0;
+          const prioridadeMax = prioridades[max] || 0;
+          return prioridadeAtual > prioridadeMax ? inc.severidade : max;
+        }, 'BAIXA')
+      }
+    });
+  } catch (error) {
+    FiscalLogger.erroFiscal('AUDITORIA_ENDPOINT', req.params.codigo, error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro ao auditar produto',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * @route   POST /api/fiscal/auditar-lote
+ * @desc    Auditar múltiplos produtos em lote
+ * @access  Privado
+ */
+router.post('/auditar-lote', async (req, res) => {
+  try {
+    const { produtos, uf } = req.body;
+    
+    if (!produtos || !Array.isArray(produtos)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Campo "produtos" é obrigatório e deve ser um array'
+      });
+    }
+    
+    FiscalLogger.separador(`AUDITORIA LOTE - ${produtos.length} PRODUTOS`);
+    
+    const resultados = await fiscalAuditService.auditarProdutos(produtos, uf);
+    
+    // Estatísticas gerais
+    const stats = {
+      total_produtos: produtos.length,
+      produtos_com_inconsistencias: resultados.filter(r => r.inconsistencias?.length > 0).length,
+      total_inconsistencias: resultados.reduce((acc, r) => acc + (r.inconsistencias?.length || 0), 0),
+      inconsistencias_criticas: resultados.reduce((acc, r) => 
+        acc + (r.inconsistencias?.filter(i => i.severidade === 'CRITICA').length || 0), 0)
+    };
+    
+    return res.json({
+      success: true,
+      stats: stats,
+      resultados: resultados,
+      produtos_criticos: resultados
+        .filter(r => r.inconsistencias?.some(i => i.severidade === 'CRITICA'))
+        .map(r => r.produto)
+    });
+  } catch (error) {
+    logger.error('Erro na auditoria em lote:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro ao auditar produtos em lote',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/fiscal/relatorio-inconsistencias
+ * @desc    Gerar relatório completo de inconsistências fiscais
+ * @access  Privado
+ */
+router.get('/relatorio-inconsistencias', async (req, res) => {
+  try {
+    const { uf, limite = 50 } = req.query;
+    
+    FiscalLogger.separador('RELATÓRIO GERAL DE INCONSISTÊNCIAS');
+    
+    // Buscar produtos que podem ter inconsistências
+    const query = knex('regras_fiscais_produtos as rfp')
+      .join('regras_icms_itens as rii', 'rfp.cod_regra_icms', 'rii.cod_regra_icms')
+      .select('rfp.cod_produto')
+      .where('rii.st_icms', '00')
+      .where('rii.icms_st', 'S')
+      .limit(parseInt(limite));
+    
+    if (uf) {
+      query.where('rii.uf', uf);
+    }
+    
+    const produtosComInconsistencias = await query;
+    const codigosProdutos = produtosComInconsistencias.map(p => p.cod_produto);
+    
+    if (codigosProdutos.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Nenhuma inconsistência CST 00 + ICMS-ST encontrada',
+        stats: { total: 0 }
+      });
+    }
+    
+    // Auditar produtos com inconsistências
+    const auditResults = await fiscalAuditService.auditarProdutos(codigosProdutos, uf);
+    
+    // Agrupar por tipo de inconsistência
+    const inconsistenciasPorTipo = {};
+    auditResults.forEach(audit => {
+      if (audit.inconsistencias) {
+        audit.inconsistencias.forEach(inc => {
+          if (!inconsistenciasPorTipo[inc.tipo]) {
+            inconsistenciasPorTipo[inc.tipo] = [];
+          }
+          inconsistenciasPorTipo[inc.tipo].push({
+            produto: audit.produto,
+            ...inc
+          });
+        });
+      }
+    });
+    
+    return res.json({
+      success: true,
+      stats: {
+        produtos_analisados: codigosProdutos.length,
+        produtos_com_inconsistencias: auditResults.filter(r => r.inconsistencias?.length > 0).length,
+        tipos_inconsistencias: Object.keys(inconsistenciasPorTipo).length
+      },
+      inconsistencias_por_tipo: inconsistenciasPorTipo,
+      produtos_criticos: auditResults
+        .filter(r => r.inconsistencias?.some(i => i.severidade === 'CRITICA'))
+        .map(r => ({
+          produto: r.produto,
+          inconsistencias: r.inconsistencias.filter(i => i.severidade === 'CRITICA')
+        }))
+    });
+  } catch (error) {
+    logger.error('Erro ao gerar relatório de inconsistências:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro ao gerar relatório',
       details: error.message
     });
   }

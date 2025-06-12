@@ -8,7 +8,7 @@ import {
   FaCheck, FaSpinner, FaCopy, FaEnvelope, FaTable, FaTh,
   FaUser, FaUserTie, FaMoneyBillWave, FaWhatsapp
 } from 'react-icons/fa';
-import api from '../../services/api';
+import api, { configurationAPI } from '../../services/api';
 import { getUser } from '../../services/authService';
 import OrcamentoPDF from '../../components/OrcamentoPDF';
 import { formatOrcamentoCodigo } from '../../utils';
@@ -36,6 +36,11 @@ const Orcamentos = () => {
   const [whatsappCloudData, setWhatsappCloudData] = useState({ phone: '', message: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
   const navigate = useNavigate();
+
+  // Estados para configurações de funcionalidades
+  const [enableEmailFeature, setEnableEmailFeature] = useState(true);
+  const [enableWhatsAppFeature, setEnableWhatsAppFeature] = useState(true);
+  const [featuresLoading, setFeaturesLoading] = useState(true);
 
   // Detectar se é dispositivo móvel
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -120,11 +125,33 @@ const Orcamentos = () => {
     }
   };
 
+  // Função para carregar configurações de funcionalidades
+  const loadFeatureSettings = async () => {
+    try {
+      setFeaturesLoading(true);
+      const response = await configurationAPI.getOrcamentoFeaturesSettings();
+      if (response.success && response.data) {
+        setEnableEmailFeature(response.data.enable_orcamento_email);
+        setEnableWhatsAppFeature(response.data.enable_orcamento_whatsapp);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configurações de funcionalidades:', error);
+      // Em caso de erro, manter as funcionalidades habilitadas por padrão
+    } finally {
+      setFeaturesLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (usuarioLogado) {
     fetchData();
     }
   }, [usuarioLogado]);
+
+  // Carregar configurações de funcionalidades
+  useEffect(() => {
+    loadFeatureSettings();
+  }, []);
 
   useEffect(() => {
     filterOrcamentos();
@@ -592,34 +619,40 @@ const Orcamentos = () => {
                   </td>
                   <td>
                         <div className="acoes-lista">
-                          <button 
-                            className="btn-acao btn-email" 
-                            onClick={() => handleSendEmail(orcamento)}
-                            title="Enviar por E-mail"
-                          >
-                            <FaEnvelope />
-                          </button>
-                          <button 
-                            className="btn-acao btn-whatsapp" 
-                            onClick={() => handleSendWhatsApp(orcamento)}
-                            title="Enviar via WhatsApp (Link)"
-                            style={{ backgroundColor: '#25d366', color: 'white' }}
-                          >
-                            <FaWhatsapp />
-                          </button>
-                          <button 
-                            className="btn-acao btn-whatsapp-api" 
-                            onClick={() => handleSendWhatsAppCloudAPI(orcamento)}
-                            title="Enviar via WhatsApp (PDF Anexado Diretamente)"
-                            style={{ 
-                              backgroundColor: '#128c7e', 
-                              color: 'white',
-                              marginLeft: '2px'
-                            }}
-                          >
-                            <FaWhatsapp />
-                            <span style={{ fontSize: '8px', marginLeft: '2px' }}>📎</span>
-                          </button>
+                          {enableEmailFeature && (
+                            <button 
+                              className="btn-acao btn-email" 
+                              onClick={() => handleSendEmail(orcamento)}
+                              title="Enviar por E-mail"
+                            >
+                              <FaEnvelope />
+                            </button>
+                          )}
+                          {enableWhatsAppFeature && (
+                            <>
+                              <button 
+                                className="btn-acao btn-whatsapp" 
+                                onClick={() => handleSendWhatsApp(orcamento)}
+                                title="Enviar via WhatsApp (Link)"
+                                style={{ backgroundColor: '#25d366', color: 'white' }}
+                              >
+                                <FaWhatsapp />
+                              </button>
+                              <button 
+                                className="btn-acao btn-whatsapp-api" 
+                                onClick={() => handleSendWhatsAppCloudAPI(orcamento)}
+                                title="Enviar via WhatsApp (PDF Anexado Diretamente)"
+                                style={{ 
+                                  backgroundColor: '#128c7e', 
+                                  color: 'white',
+                                  marginLeft: '2px'
+                                }}
+                              >
+                                <FaWhatsapp />
+                                <span style={{ fontSize: '8px', marginLeft: '2px' }}>📎</span>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                       <td>
@@ -798,34 +831,40 @@ const Orcamentos = () => {
                       >
                         {isLoading ? <FaSpinner className="fa-spin" /> : <FaFilePdf />}
                       </Button>
-                      <Button 
-                        size="sm"
-                        onClick={() => handleSendEmail(orcamento)}
-                        title="Enviar por E-mail"
-                        className="action-btn"
-                        style={{ backgroundColor: '#007bff', color: 'white', border: 'none' }}
-                      >
-                        <FaEnvelope />
-                      </Button>
-                      <Button 
-                        size="sm"
-                        onClick={() => handleSendWhatsApp(orcamento)}
-                        title="Enviar via WhatsApp (Link)"
-                        className="action-btn"
-                        style={{ backgroundColor: '#25d366', color: 'white', border: 'none' }}
-                      >
-                        <FaWhatsapp />
-                      </Button>
-                      <Button 
-                        size="sm"
-                        onClick={() => handleSendWhatsAppCloudAPI(orcamento)}
-                        title="Enviar via WhatsApp (PDF Anexado)"
-                        className="action-btn"
-                        style={{ backgroundColor: '#128c7e', color: 'white', border: 'none' }}
-                      >
-                        <FaWhatsapp />
-                        <span style={{ fontSize: '8px', marginLeft: '2px' }}>📎</span>
-                      </Button>
+                      {enableEmailFeature && (
+                        <Button 
+                          size="sm"
+                          onClick={() => handleSendEmail(orcamento)}
+                          title="Enviar por E-mail"
+                          className="action-btn"
+                          style={{ backgroundColor: '#007bff', color: 'white', border: 'none' }}
+                        >
+                          <FaEnvelope />
+                        </Button>
+                      )}
+                      {enableWhatsAppFeature && (
+                        <>
+                          <Button 
+                            size="sm"
+                            onClick={() => handleSendWhatsApp(orcamento)}
+                            title="Enviar via WhatsApp (Link)"
+                            className="action-btn"
+                            style={{ backgroundColor: '#25d366', color: 'white', border: 'none' }}
+                          >
+                            <FaWhatsapp />
+                          </Button>
+                          <Button 
+                            size="sm"
+                            onClick={() => handleSendWhatsAppCloudAPI(orcamento)}
+                            title="Enviar via WhatsApp (PDF Anexado)"
+                            className="action-btn"
+                            style={{ backgroundColor: '#128c7e', color: 'white', border: 'none' }}
+                          >
+                            <FaWhatsapp />
+                            <span style={{ fontSize: '8px', marginLeft: '2px' }}>📎</span>
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </Card.Body>
                 </Card>

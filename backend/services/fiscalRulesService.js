@@ -1,5 +1,7 @@
 const knex = require('../database/connection');
 const logger = require('../utils/logger');
+const FiscalLogger = require('../utils/fiscalLogger');
+const erpDatabase = require('../config/erp-database');
 
 class FiscalRulesService {
   /**
@@ -38,30 +40,9 @@ class FiscalRulesService {
           
         if (regrasFiscaisProduto) {
           codRegraIcms = regrasFiscaisProduto.cod_regra_icms;
-          logger.info(`Regra fiscal encontrada para produto ${codigo}: cod_regra_icms = ${codRegraIcms}`);
-        } else {
-          logger.warn(`Nenhuma regra fiscal encontrada para produto ${codigo}`);
         }
       } catch (error) {
-        logger.error(`Erro ao buscar regras fiscais do produto ${codigo}: ${error.message}`);
-      }
-      
-      // Buscar regras de ICMS, usando o cod_regra_icms da tabela regras_fiscais_produtos
-      let regrasIcms = null;
-      try {
-        regrasIcms = await knex('regras_icms_itens')
-          .where('cod_regra_icms', codRegraIcms)
-          .where('uf', 'SP')  // Usar UF padrão SP, mas deve ser substituída pelo cliente real
-          .first();
-          
-        if (!regrasIcms) {
-          // Tentar buscar qualquer regra disponível para essa regra ICMS
-          regrasIcms = await knex('regras_icms_itens')
-            .where('cod_regra_icms', codRegraIcms)
-            .first();
-        }
-      } catch (error) {
-        logger.warn(`Erro ao buscar regras ICMS para produto ${codigo}: ${error.message}`);
+        FiscalLogger.erroFiscal('BUSCAR_REGRAS_FISCAIS', codigo, error);
       }
       
       // Buscar classificação fiscal, se disponível
@@ -101,11 +82,8 @@ class FiscalRulesService {
         // Adicionar valores das regras fiscais específicas (se disponíveis)
         ...(regrasFiscaisProduto || {}),
         
-        // Adicionar valores das regras de ICMS (se disponíveis)
-        st_icms: regrasIcms?.st_icms || '00',
-        aliq_icms: regrasIcms?.aliq_icms || 0,
-        red_icms: regrasIcms?.red_icms || 0,
-        icms_st: regrasIcms?.icms_st || 'N',
+        // CORREÇÃO: Não incluir dados de ICMS/ST aqui pois dependem da UF específica
+        // Esses dados devem ser buscados quando a UF for fornecida
         
         // Adicionar valores de classificação fiscal (se disponíveis)
         ncm: classFiscal?.cod_ncm || produto.class_fiscal || '',
@@ -116,27 +94,20 @@ class FiscalRulesService {
         iva: tributacaoFiscal?.iva || regrasFiscaisProduto?.iva || 0
       };
       
-      // Log para debug
-      logger.info(`Dados fiscais do produto ${codigo} recuperados:`, {
-        ...dadosFiscais,
-        fonte_iva: tributacaoFiscal?.iva ? 'tributacao_fiscal' : (regrasFiscaisProduto?.iva ? 'regras_fiscais_produtos' : 'padrao')
-      });
+      // Log organizado
+      FiscalLogger.dadosFiscaisProduto(codigo, dadosFiscais);
       
       return dadosFiscais;
     } catch (error) {
-      logger.error(`Erro ao buscar dados fiscais do produto ${codigo}:`, error);
+      FiscalLogger.erroFiscal('GET_DADOS_FISCAIS', codigo, error);
       // Retornar um objeto com valores padrão para não quebrar a aplicação
       return {
         codigo,
         class_fiscal: '',
         aliq_ipi: 0,
-        aliq_icms: 0,
         cod_regra_icms: 0,
         cod_origem_prod: '0',
         cod_regime: 3,
-        st_icms: '00',
-        red_icms: 0,
-        icms_st: 'N',
         ncm: '',
         cest: '',
         iva: 0
@@ -152,16 +123,62 @@ class FiscalRulesService {
     try {
       const { codigo, uf, ufEmpresa, codRegime } = params;
       
-      // Buscar regra na tabela regras_icms_itens apenas com filtro de empresa = 1
-      let regras = await knex('regras_icms_itens')
-        .where({
-          'cod_regra_icms': codigo,
-          'uf': uf
-        })
-        .first();
+      // Buscar regra na tabela regras_icms_itens - PRIORIDADE: ERP, FALLBACK: Local
+      let regras = null;
       
+      // Tentar buscar no ERP primeiro
+      if (erpDatabase) {
+        try {
+          FiscalLogger.fallbackDados('GET_REGRAS_ICMS', 'ERP', 'Tentativa', 'Consultando banco ERP primeiro');
+          
+          const regrasErp = await erpDatabase.raw(`
+            SELECT 
+              r.codigo as cod_regra_icms,
+              i.uf,
+              i.st_icms, 
+              i.aliq_icms, 
+              i.red_icms,
+              i.st_icms_contr, 
+              i.aliq_icms_contr, 
+              i.red_icms_contr,
+              i.icms_st, 
+              i.aliq_interna,
+              i.cod_empresa
+            FROM 
+              regras_icms_cadastro r
+            JOIN 
+              regras_icms_itens i ON r.codigo = i.cod_regra_icms
+            WHERE 
+              r.codigo = ? AND i.uf = ?
+          `, [codigo, uf]);
+          
+          if (regrasErp.rows && regrasErp.rows.length > 0) {
+            regras = regrasErp.rows[0];
+            FiscalLogger.fallbackDados('GET_REGRAS_ICMS', 'ERP', 'Sucesso', 'Dados obtidos do banco ERP');
+          }
+        } catch (erpError) {
+          FiscalLogger.fallbackDados('GET_REGRAS_ICMS', 'ERP', 'Erro', `Falha no ERP: ${erpError.message}`);
+        }
+      }
+      
+      // Se não conseguiu do ERP, buscar no banco local
       if (!regras) {
-        logger.warn(`Regra ICMS não encontrada para código ${codigo}, UF ${uf}. Usando valores padrão.`);
+        FiscalLogger.fallbackDados('GET_REGRAS_ICMS', 'Local', 'Tentativa', 'Consultando banco local como fallback');
+        
+        regras = await knex('regras_icms_itens')
+          .where({
+            'cod_regra_icms': codigo,
+            'uf': uf
+          })
+          .first();
+          
+        if (regras) {
+          FiscalLogger.fallbackDados('GET_REGRAS_ICMS', 'Local', 'Sucesso', 'Dados obtidos do banco local');
+        }
+      }
+
+      if (!regras) {
+        logger.warn(`Regra ICMS não encontrada para código ${codigo}, UF ${uf} (consultado ERP e Local). Usando valores padrão.`);
         
         // Fornecer dados padrão para não quebrar o fluxo
         regras = {
@@ -355,7 +372,12 @@ class FiscalRulesService {
         isImportado = false
       } = params;
       
-      logger.info(`Calculando ICMS-ST para produto ${codigoProduto}, UF ${ufDestino}, valor ${valorProduto}, desconto ${valorDesconto}, isImportado=${isImportado}`);
+      FiscalLogger.inicioProcesso('ICMS-ST', codigoProduto, ufDestino, {
+        valor: valorProduto,
+        desconto: valorDesconto,
+        importado: isImportado,
+        contribuinte: tipoContribuinte
+      });
       
       // 1. Buscar o produto
       const produto = await knex('produtos')
@@ -386,31 +408,72 @@ class FiscalRulesService {
       }
       
       const codRegraIcms = regraFiscalProduto.cod_regra_icms;
-      logger.info(`Produto ${codigoProduto} usa cod_regra_icms ${codRegraIcms} da tabela regras_fiscais_produtos`);
 
-      // 2. Consultar a tabela regras_icms_itens para obter as regras fiscais
-      // Buscar apenas com empresa = 1
-      let regraIcms = await knex('regras_icms_itens')
-        .where({
-          'cod_regra_icms': codRegraIcms,
-          'uf': ufDestino,
-          'cod_empresa': 1
-        })
-        .first();
+      // 2. Consultar a tabela regras_icms_itens - PRIORIDADE: ERP, FALLBACK: Local
+      let regraIcms = null;
+      
+      // Tentar buscar no ERP primeiro
+      if (erpDatabase) {
+        try {
+          FiscalLogger.fallbackDados('REGRAS_ICMS', 'ERP', 'Tentativa', 'Consultando banco ERP primeiro');
+          
+          const regrasErp = await erpDatabase.raw(`
+            SELECT 
+              r.codigo as cod_regra_icms,
+              i.uf,
+              i.st_icms, 
+              i.aliq_icms, 
+              i.red_icms,
+              i.st_icms_contr, 
+              i.aliq_icms_contr, 
+              i.red_icms_contr,
+              i.icms_st, 
+              i.aliq_interna,
+              i.cod_empresa
+            FROM 
+              regras_icms_cadastro r
+            JOIN 
+              regras_icms_itens i ON r.codigo = i.cod_regra_icms
+            WHERE 
+              r.codigo = ? AND i.uf = ? AND i.cod_empresa = ?
+          `, [codRegraIcms, ufDestino, 1]);
+          
+          if (regrasErp.rows && regrasErp.rows.length > 0) {
+            regraIcms = regrasErp.rows[0];
+            FiscalLogger.fallbackDados('REGRAS_ICMS', 'ERP', 'Sucesso', 'Dados obtidos do banco ERP');
+          }
+        } catch (erpError) {
+          FiscalLogger.fallbackDados('REGRAS_ICMS', 'ERP', 'Erro', `Falha no ERP: ${erpError.message}`);
+        }
+      }
+      
+      // Se não conseguiu do ERP, buscar no banco local
+      if (!regraIcms) {
+        FiscalLogger.fallbackDados('REGRAS_ICMS', 'Local', 'Tentativa', 'Consultando banco local como fallback');
+        
+        regraIcms = await knex('regras_icms_itens')
+          .where({
+            'cod_regra_icms': codRegraIcms,
+            'uf': ufDestino,
+            'cod_empresa': 1
+          })
+          .first();
+          
+        if (regraIcms) {
+          FiscalLogger.fallbackDados('REGRAS_ICMS', 'Local', 'Sucesso', 'Dados obtidos do banco local');
+        }
+      }
       
       if (!regraIcms) {
-        // Log detalhado para depuração
-        logger.info(`Regra ICMS não encontrada com cod_empresa = 1 para código ${codRegraIcms} e UF ${ufDestino}`);
-        
         return {
           success: false,
-          error: `Regras fiscais não encontradas para o produto ${codigoProduto} com cod_regra_icms ${codRegraIcms} e UF ${ufDestino} na empresa 1`,
+          error: `Regras fiscais não encontradas para o produto ${codigoProduto} com cod_regra_icms ${codRegraIcms} e UF ${ufDestino} na empresa 1 (consultado ERP e Local)`,
           valorICMSST: 0
         };
       }
       
-      // Log da regra encontrada para facilitar depuração
-      logger.info(`Regra ICMS encontrada para UF ${ufDestino}: ${JSON.stringify(regraIcms)}`);
+      // Log das regras ICMS encontradas
+      FiscalLogger.regrasICMS(codigoProduto, ufDestino, regraIcms);
 
       // 3. Determinar os valores com base no tipo de cliente (contribuinte ou não)
       let stIcms = '';
@@ -432,7 +495,11 @@ class FiscalRulesService {
       // REGRA ESPECIAL CST 60: ICMS já retido anteriormente por substituição tributária
       // Quando CST = 60, não deve ser feito novo cálculo de ICMS-ST
       if (stIcms === '60') {
-        logger.info(`CST ${stIcms} detectado para produto ${codigoProduto} - ICMS já retido anteriormente por substituição tributária. Não calculando novo ICMS-ST.`);
+        FiscalLogger.validacaoFiscal(codigoProduto, ufDestino, 'CST_60_DETECTADO', {
+          cst: stIcms,
+          mensagem: 'ICMS já retido anteriormente por substituição tributária'
+        });
+        
         return {
           success: true,
           temST: false,
@@ -441,6 +508,28 @@ class FiscalRulesService {
           valorFCPST: 0,
           baseICMSST: 0,
           mensagem: 'CST 60: ICMS já foi retido anteriormente por substituição tributária. Não há novo ICMS-ST a recolher.'
+        };
+      }
+
+      // NOVA VALIDAÇÃO: CST 00 é incompatível com ICMS-ST
+      // CST 00 = Tributada integralmente, não pode ter ST
+      if (stIcms === '00') {
+        FiscalLogger.validacaoFiscal(codigoProduto, ufDestino, 'INCONSISTENTE', {
+          cst: stIcms,
+          icms_st: regraIcms.icms_st,
+          problema: 'CST 00 incompatível com ICMS-ST',
+          correcao: 'Aplicada automaticamente'
+        });
+        
+        return {
+          success: true,
+          temST: false,
+          stIcms: stIcms,
+          valorICMSST: 0,
+          valorFCPST: 0,
+          baseICMSST: 0,
+          inconsistenciaDetectada: true,
+          mensagem: `INCONSISTÊNCIA FISCAL: CST ${stIcms} (Tributada integralmente) é incompatível com ICMS-ST. Verificar configuração da regra fiscal.`
         };
       }
 

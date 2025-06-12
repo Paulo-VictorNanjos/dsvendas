@@ -1362,6 +1362,10 @@ router.get('/usuarios/:id', authMiddleware.authenticateToken, async (req, res) =
 router.get('/configurations/stock-validation/settings', authMiddleware.authenticateToken, configurationController.getStockValidationConfig);
 router.put('/configurations/stock-validation/settings', authMiddleware.authenticateToken, authMiddleware.isAdmin, configurationController.updateStockValidationConfig);
 
+// Rotas para configurações de funcionalidades de orçamentos
+router.get('/configurations/orcamento-features/settings', authMiddleware.authenticateToken, configurationController.getOrcamentoFeaturesConfig);
+router.put('/configurations/orcamento-features/settings', authMiddleware.authenticateToken, authMiddleware.isAdmin, configurationController.updateOrcamentoFeaturesConfig);
+
 // Depois as rotas genéricas
 router.get('/configurations', authMiddleware.authenticateToken, configurationController.list);
 router.get('/configurations/:key', authMiddleware.authenticateToken, configurationController.get);

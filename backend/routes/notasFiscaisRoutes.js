@@ -15,4 +15,13 @@ router.get('/:numero/xml', notasFiscaisController.buscarXmlPorNumero);
 router.post('/proxy/danfe/xml', notasFiscaisController.gerarDanfePorXml);
 router.post('/proxy/danfe/chave', notasFiscaisController.gerarDanfePorChave);
 
+// Rota para geração de DANFE própria (sem dependência externa)
+router.post('/danfe/local', notasFiscaisController.gerarDanfeLocal);
+
+// Rota para verificar status do serviço
+router.get('/danfe/status', notasFiscaisController.verificarStatusServicoDANFE);
+
+// Rota para testar o Puppeteer
+router.get('/danfe/test-puppeteer', notasFiscaisController.testarPuppeteer);
+
 module.exports = router; 

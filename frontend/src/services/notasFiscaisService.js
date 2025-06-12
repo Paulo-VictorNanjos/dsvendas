@@ -130,9 +130,10 @@ export const buscarXmlPorNumero = async (numeroNF) => {
  * Consulta e gera PDF da NF-e utilizando o serviço Meu Danfe
  * @param {string} xmlNFe - XML da NF-e ou chave da NFe (44 dígitos)
  * @param {boolean} isChaveOnly - Indica se está enviando apenas a chave NFe
+ * @param {boolean} forceAttempt - Força a tentativa mesmo com XMLs grandes
  * @returns {Promise<{success: boolean, pdf: string}>} Objeto contendo o PDF em base64
  */
-export const consultarDanfeAPI = async (xmlNFe, isChaveOnly = false) => {
+export const consultarDanfeAPI = async (xmlNFe, isChaveOnly = false, forceAttempt = false) => {
   try {
     if (!xmlNFe) {
       console.error('[notasFiscaisService] XML/Chave da NF-e não fornecido');
@@ -165,8 +166,13 @@ export const consultarDanfeAPI = async (xmlNFe, isChaveOnly = false) => {
     } else {
       console.log('[notasFiscaisService] Consultando serviço Meu Danfe usando XML via proxy');
       
+      // Construir URL com parâmetro force se necessário
+      const url = forceAttempt 
+        ? '/notas-fiscais/proxy/danfe/xml?force=true'
+        : '/notas-fiscais/proxy/danfe/xml';
+      
       // Usar o endpoint de proxy para XML
-      const response = await api.post('/notas-fiscais/proxy/danfe/xml', {
+      const response = await api.post(url, {
         xml: xmlNFe
       });
       

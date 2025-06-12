@@ -1,12 +1,23 @@
 {
-  "dependencies": {
-    "animate.css": "^4.1.1",
-    "dotenv": "^16.5.0",
-    "knex": "^3.1.0",
-    "pg": "^8.15.6",
-    "react-material-ui-carousel": "^3.4.2",
-    "recharts": "^2.15.3",
-    "sqlite3": "^5.1.7",
-    "sweetalert2": "^11.21.0"
-  }
+  "name": "dsvendas",
+  "version": "1.0.0",
+  "description": "Sistema de Vendas DSVENDAS",
+  "scripts": {
+    "start": "echo 'Use npm run dev para executar frontend e backend simultaneamente'",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && npm start",
+    "frontend": "cd frontend && npm start",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  },
+  "keywords": [
+    "vendas",
+    "sistema",
+    "react",
+    "node"
+  ],
+  "author": "DSVENDAS Team",
+  "license": "MIT"
 }

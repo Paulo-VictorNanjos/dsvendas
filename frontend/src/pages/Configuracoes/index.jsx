@@ -20,6 +20,10 @@ const Configuracoes = () => {
   const [validateStockInQuotations, setValidateStockInQuotations] = useState(false);
   const [validateStockInOrders, setValidateStockInOrders] = useState(true);
 
+  // Configurações de funcionalidades de orçamentos
+  const [enableOrcamentoEmail, setEnableOrcamentoEmail] = useState(true);
+  const [enableOrcamentoWhatsapp, setEnableOrcamentoWhatsapp] = useState(true);
+
   // Verificar se o usuário é admin para algumas configurações
   const user = getUser();
   const isAdmin = user?.role === 'admin';
@@ -44,7 +48,7 @@ const Configuracoes = () => {
           setConfigurations(response.data);
         } else {
           setError('Erro ao carregar configurações');
-          }
+        }
         }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);
@@ -68,8 +72,23 @@ const Configuracoes = () => {
       }
     };
 
+    const loadOrcamentoFeaturesSettings = async () => {
+      try {
+        if (isAdmin) {
+          const response = await configurationAPI.getOrcamentoFeaturesSettings();
+          if (response.success && response.data) {
+            setEnableOrcamentoEmail(response.data.enable_orcamento_email);
+            setEnableOrcamentoWhatsapp(response.data.enable_orcamento_whatsapp);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações de funcionalidades de orçamentos:', error);
+      }
+    };
+
     loadConfigurations();
     loadStockValidationSettings();
+    loadOrcamentoFeaturesSettings();
   }, [isAdmin]);
 
   // Salvar configurações de validação de estoque
@@ -82,6 +101,34 @@ const Configuracoes = () => {
       const response = await configurationAPI.updateStockValidationSettings({
         validate_quotations: validateStockInQuotations,
         validate_orders: validateStockInOrders
+      });
+
+      if (response.success) {
+        setSuccess('Configurações salvas com sucesso');
+        toast.success('Configurações salvas com sucesso');
+      } else {
+        setError('Erro ao salvar configurações');
+        toast.error('Erro ao salvar configurações');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error);
+      setError('Erro ao salvar configurações');
+      toast.error('Erro ao salvar configurações');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Salvar configurações de funcionalidades de orçamentos
+  const handleSaveOrcamentoFeaturesSettings = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      const response = await configurationAPI.updateOrcamentoFeaturesSettings({
+        enable_email: enableOrcamentoEmail,
+        enable_whatsapp: enableOrcamentoWhatsapp
       });
 
       if (response.success) {
@@ -146,57 +193,112 @@ const Configuracoes = () => {
                 {isAdmin && (
                   <Tab.Pane eventKey="sistema">
                     <h5 className="mb-4">Configurações de Estoque</h5>
-              <Form>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Check 
-                        type="switch"
-                        id="validate-stock-quotations"
-                        label="Validar estoque disponível ao criar orçamentos"
-                        checked={validateStockInQuotations}
-                        onChange={(e) => setValidateStockInQuotations(e.target.checked)}
-                      />
-                      <Form.Text className="text-muted">
-                        Se ativado, o sistema verificará se há estoque disponível para os produtos ao criar orçamentos.
-                        Caso contrário, permitirá criar orçamentos mesmo sem estoque.
-                      </Form.Text>
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Check 
-                        type="switch"
-                        id="validate-stock-orders"
-                        label="Validar estoque disponível ao converter orçamentos em pedidos"
-                        checked={validateStockInOrders}
-                        onChange={(e) => setValidateStockInOrders(e.target.checked)}
-                      />
-                      <Form.Text className="text-muted">
-                        Se ativado, o sistema verificará se há estoque disponível para os produtos ao converter orçamentos em pedidos.
-                        Caso contrário, permitirá converter orçamentos em pedidos mesmo sem estoque.
-                      </Form.Text>
-                    </Form.Group>
-                  </Col>
-                </Row>
-                <Button 
-                  variant="primary" 
-                  onClick={handleSaveStockValidationSettings}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <>
-                      <Spinner animation="border" size="sm" className="me-2" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <FaSave className="me-2" />
-                      Salvar Configurações de Estoque
-                    </>
-                  )}
-                </Button>
-              </Form>
+                    <Form>
+                      <Row>
+                        <Col md={6}>
+                          <Form.Group className="mb-3">
+                            <Form.Check 
+                              type="switch"
+                              id="validate-stock-quotations"
+                              label="Validar estoque disponível ao criar orçamentos"
+                              checked={validateStockInQuotations}
+                              onChange={(e) => setValidateStockInQuotations(e.target.checked)}
+                            />
+                            <Form.Text className="text-muted">
+                              Se ativado, o sistema verificará se há estoque disponível para os produtos ao criar orçamentos.
+                              Caso contrário, permitirá criar orçamentos mesmo sem estoque.
+                            </Form.Text>
+                          </Form.Group>
+                        </Col>
+                        <Col md={6}>
+                          <Form.Group className="mb-3">
+                            <Form.Check 
+                              type="switch"
+                              id="validate-stock-orders"
+                              label="Validar estoque disponível ao converter orçamentos em pedidos"
+                              checked={validateStockInOrders}
+                              onChange={(e) => setValidateStockInOrders(e.target.checked)}
+                            />
+                            <Form.Text className="text-muted">
+                              Se ativado, o sistema verificará se há estoque disponível para os produtos ao converter orçamentos em pedidos.
+                              Caso contrário, permitirá converter orçamentos em pedidos mesmo sem estoque.
+                            </Form.Text>
+                          </Form.Group>
+                        </Col>
+                      </Row>
+                      <Button 
+                        variant="primary" 
+                        onClick={handleSaveStockValidationSettings}
+                        disabled={saving}
+                      >
+                        {saving ? (
+                          <>
+                            <Spinner animation="border" size="sm" className="me-2" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <FaSave className="me-2" />
+                            Salvar Configurações de Estoque
+                          </>
+                        )}
+                      </Button>
+                    </Form>
+
+                    <hr className="my-4" />
+
+                    <h5 className="mb-4">Configurações de Funcionalidades</h5>
+                    <Form>
+                      <Row>
+                        <Col md={6}>
+                          <Form.Group className="mb-3">
+                            <Form.Check 
+                              type="switch"
+                              id="enable-orcamento-email"
+                              label="Habilitar envio de orçamentos por e-mail"
+                              checked={enableOrcamentoEmail}
+                              onChange={(e) => setEnableOrcamentoEmail(e.target.checked)}
+                            />
+                            <Form.Text className="text-muted">
+                              Se ativado, os botões de envio por e-mail aparecerão na lista de orçamentos.
+                              Usuários precisam configurar seu SMTP na aba "Configurações de E-mail".
+                            </Form.Text>
+                          </Form.Group>
+                        </Col>
+                        <Col md={6}>
+                          <Form.Group className="mb-3">
+                            <Form.Check 
+                              type="switch"
+                              id="enable-orcamento-whatsapp"
+                              label="Habilitar envio de orçamentos por WhatsApp"
+                              checked={enableOrcamentoWhatsapp}
+                              onChange={(e) => setEnableOrcamentoWhatsapp(e.target.checked)}
+                            />
+                            <Form.Text className="text-muted">
+                              Se ativado, os botões de envio por WhatsApp aparecerão na lista de orçamentos.
+                              Permite compartilhar orçamentos através do WhatsApp Web ou aplicativo.
+                            </Form.Text>
+                          </Form.Group>
+                        </Col>
+                      </Row>
+                      <Button 
+                        variant="success" 
+                        onClick={handleSaveOrcamentoFeaturesSettings}
+                        disabled={saving}
+                      >
+                        {saving ? (
+                          <>
+                            <Spinner animation="border" size="sm" className="me-2" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <FaSave className="me-2" />
+                            Salvar Configurações de Funcionalidades
+                          </>
+                        )}
+                      </Button>
+                    </Form>
                   </Tab.Pane>
                 )}
               </Tab.Content>

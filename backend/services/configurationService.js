@@ -213,6 +213,24 @@ class ConfigurationService {
   async shouldPromptDuplicateItems(codEmpresa = 1) {
     return await this.getValue('prompt_duplicate_items', true, codEmpresa);
   }
+
+  /**
+   * Verifica se o envio de orçamentos por email está habilitado
+   * @param {number} codEmpresa - Código da empresa (opcional, padrão 1)
+   * @returns {Promise<boolean>} - true se estiver habilitado, false caso contrário
+   */
+  async isEmailOrcamentoEnabled(codEmpresa = 1) {
+    return await this.getValue('enable_orcamento_email', true, codEmpresa);
+  }
+
+  /**
+   * Verifica se o envio de orçamentos por WhatsApp está habilitado
+   * @param {number} codEmpresa - Código da empresa (opcional, padrão 1)
+   * @returns {Promise<boolean>} - true se estiver habilitado, false caso contrário
+   */
+  async isWhatsAppOrcamentoEnabled(codEmpresa = 1) {
+    return await this.getValue('enable_orcamento_whatsapp', true, codEmpresa);
+  }
 }
 
 module.exports = new ConfigurationService(); 

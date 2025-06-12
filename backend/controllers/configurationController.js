@@ -191,6 +191,77 @@ class ConfigurationController {
       });
     }
   }
+
+  /**
+   * Obtém as configurações de funcionalidades de orçamentos (email/WhatsApp)
+   * @param {Object} req - Requisição
+   * @param {Object} res - Resposta
+   */
+  async getOrcamentoFeaturesConfig(req, res) {
+    try {
+      const codEmpresa = req.userEmpresa || 1;
+      
+      const emailEnabled = await configService.getConfig('enable_orcamento_email', codEmpresa);
+      const whatsappEnabled = await configService.getConfig('enable_orcamento_whatsapp', codEmpresa);
+
+      return res.json({
+        success: true,
+        data: {
+          enable_orcamento_email: emailEnabled ? emailEnabled.value === 'true' : true,
+          enable_orcamento_whatsapp: whatsappEnabled ? whatsappEnabled.value === 'true' : true
+        }
+      });
+    } catch (error) {
+      logger.error(`Erro ao obter configurações de funcionalidades de orçamentos: ${error.message}`);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao obter configurações de funcionalidades'
+      });
+    }
+  }
+
+  /**
+   * Atualiza as configurações de funcionalidades de orçamentos (email/WhatsApp)
+   * @param {Object} req - Requisição
+   * @param {Object} res - Resposta
+   */
+  async updateOrcamentoFeaturesConfig(req, res) {
+    try {
+      const { enable_email, enable_whatsapp } = req.body;
+      const codEmpresa = req.userEmpresa || 1;
+
+      if (enable_email !== undefined) {
+        await configService.setConfig(
+          'enable_orcamento_email',
+          enable_email,
+          'Habilitar envio de orçamentos por email',
+          'boolean',
+          codEmpresa
+        );
+      }
+
+      if (enable_whatsapp !== undefined) {
+        await configService.setConfig(
+          'enable_orcamento_whatsapp',
+          enable_whatsapp,
+          'Habilitar envio de orçamentos por WhatsApp',
+          'boolean',
+          codEmpresa
+        );
+      }
+
+      return res.json({
+        success: true,
+        message: 'Configurações de funcionalidades de orçamentos atualizadas com sucesso'
+      });
+    } catch (error) {
+      logger.error(`Erro ao atualizar configurações de funcionalidades de orçamentos: ${error.message}`);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao atualizar configurações de funcionalidades'
+      });
+    }
+  }
 }
 
 module.exports = new ConfigurationController(); 

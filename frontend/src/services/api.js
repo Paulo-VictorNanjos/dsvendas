@@ -772,6 +772,26 @@ export const configurationAPI = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // Obter configurações de funcionalidades de orçamentos
+  getOrcamentoFeaturesSettings: async () => {
+    try {
+      const response = await api.get('/configurations/orcamento-features/settings');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Atualizar configurações de funcionalidades de orçamentos
+  updateOrcamentoFeaturesSettings: async (settings) => {
+    try {
+      const response = await api.put('/configurations/orcamento-features/settings', settings);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 

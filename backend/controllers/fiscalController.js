@@ -1070,6 +1070,31 @@ const verificarSubstituicaoTributaria = async (req, res) => {
         });
       }
       
+      // NOVA VALIDAÇÃO: CST 00 é incompatível com ICMS-ST
+      // CST 00 = Tributada integralmente, não pode ter ST
+      if (cstIcms === '00' && temST) {
+        logger.warn(`INCONSISTÊNCIA FISCAL detectada para produto ${codigo}: CST ${cstIcms} (Tributada integralmente) está configurado com icms_st='S'. CST 00 é incompatível com ICMS-ST.`);
+        return res.json({
+          success: true,
+          temST: false,
+          stIcms: cstIcms,
+          aliqIcms: aliqIcms,
+          aliqInterna: 0,
+          redIcms: redIcms,
+          produto: produto.descricao || 'N/A',
+          ncm: produto.class_fiscal || 'N/A',
+          iva: 0,
+          inconsistenciaDetectada: true,
+          detalhes: {
+            cstIcms: cstIcms,
+            regraFiscal: codRegraIcms,
+            uf: uf,
+            icmsSt: regraIcmsItem.icms_st,
+            mensagem: `INCONSISTÊNCIA FISCAL: CST ${cstIcms} (Tributada integralmente) é incompatível com ICMS-ST. Verificar configuração da regra fiscal para UF ${uf}.`
+          }
+        });
+      }
+      
       // Verificar se tem alíquota interna que pode indicar ST
       aliqInterna = parseFloat(regraIcmsItem.aliq_interna || 0);
       if (!temST && aliqInterna > 0 && cstsComST.includes(cstIcms)) {
