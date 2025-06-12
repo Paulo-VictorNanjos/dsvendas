@@ -1,17 +1,14 @@
-const { OrcamentoPDF, pdf } = require('../components/OrcamentoPDF');
+const OrcamentoPDF = require('../components/OrcamentoPDF');
 const logger = require('../utils/logger');
 
 class PdfService {
   /**
-   * Gera PDF do orçamento usando o mesmo componente do frontend
+   * Gera PDF do orçamento usando PDFKit
    */
   async generateOrcamentoPdf(dadosOrcamento) {
     try {
-      // Criar o documento PDF usando o componente React
-      const document = OrcamentoPDF({ dados: dadosOrcamento });
-      
-      // Gerar o buffer do PDF
-      const pdfBuffer = await pdf(document).toBuffer();
+      // Gerar o buffer do PDF usando PDFKit
+      const pdfBuffer = await OrcamentoPDF.generatePDF(dadosOrcamento);
       
       return pdfBuffer;
     } catch (error) {

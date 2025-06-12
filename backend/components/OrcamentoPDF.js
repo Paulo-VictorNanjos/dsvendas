@@ -1,368 +1,368 @@
-const React = require('react');
-const { Document, Page, Text, View, StyleSheet, pdf } = require('@react-pdf/renderer');
+const PDFDocument = require('pdfkit');
 
-// Remover registro de fontes externas para evitar erro de fetch
-// Font.register foi removido para usar fontes padrão
+class OrcamentoPDF {
+  static async generatePDF(dados) {
+    return new Promise((resolve, reject) => {
+      try {
+        const { orcamento, cliente, vendedor, pagamento } = dados;
+        
+        const doc = new PDFDocument({ 
+          size: 'A4',
+          margin: 30,
+          info: {
+            Title: `Orçamento ${this.formatOrcamentoCodigo(orcamento.codigo)}`,
+            Author: 'DSVENDAS',
+            Subject: 'Orçamento',
+            Keywords: 'orçamento, vendas'
+          }
+        });
+        
+        const buffers = [];
+        
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => {
+          const pdfData = Buffer.concat(buffers);
+          resolve(pdfData);
+        });
 
-// Definir estilos (usando fontes padrão do sistema)
-const styles = StyleSheet.create({
-  page: {
-    padding: 30,
-    fontFamily: 'Helvetica', // Fonte padrão do sistema
-    fontSize: 10,
-    backgroundColor: '#fff',
-    color: '#2d3436'
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderBottom: '2pt solid #0984e3',
-    paddingBottom: 10,
-  },
-  headerLeft: {
-    flexDirection: 'column',
-    flex: 1,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-    color: '#0984e3',
-  },
-  subtitle: {
-    fontSize: 10,
-    color: '#636e72',
-  },
-  infoGrid: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    gap: 15,
-  },
-  infoColumn: {
-    flex: 1,
-    backgroundColor: '#f5f6fa',
-    padding: 10,
-    borderRadius: 5,
-  },
-  columnTitle: {
-    fontWeight: 'bold',
-    color: '#0984e3',
-    marginBottom: 8,
-    fontSize: 11,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: 5,
-  },
-  infoLabel: {
-    fontWeight: 'bold',
-    width: '25%',
-    color: '#0984e3',
-  },
-  infoValue: {
-    flex: 1,
-  },
-  table: {
-    marginVertical: 10,
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#0984e3',
-    padding: 8,
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 9,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#dfe6e9',
-    padding: 6,
-    fontSize: 9,
-  },
-  tableRowEven: {
-    backgroundColor: '#f5f6fa',
-  },
-  colCodigo: { width: '8%' },
-  colDescricao: { width: '24%' },
-  colQtde: { width: '6%', textAlign: 'right' },
-  colUn: { width: '5%', textAlign: 'center' },
-  colVlUnit: { width: '11%', textAlign: 'right' },
-  colDesc: { width: '6%', textAlign: 'right' },
-  colIpi: { width: '10%', textAlign: 'right' },
-  colSt: { width: '10%', textAlign: 'right' },
-  colVlLiq: { width: '10%', textAlign: 'right' },
-  colTotal: { width: '10%', textAlign: 'right' },
-  totais: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#f5f6fa',
-    borderRadius: 5,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 5,
-  },
-  totalLabel: {
-    fontWeight: 'bold',
-  },
-  totalValue: {
-    fontWeight: 'bold',
-    color: '#0984e3',
-  },
-  grandTotal: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#dfe6e9',
-  },
-  grandTotalLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  grandTotalValue: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#0984e3',
-  },
-  observacoes: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#ffeaa7',
-    borderRadius: 5,
-  },
-  observacoesTitle: {
-    fontWeight: 'bold',
-    marginBottom: 5,
-    color: '#fdcb6e',
-  },
-  pageNumber: {
-    position: 'absolute',
-    bottom: 20,
-    right: 30,
-    fontSize: 8,
-    color: '#636e72',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 30,
-    right: 30,
-    textAlign: 'center',
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#dfe6e9',
-    fontSize: 8,
-    color: '#636e72',
+        // Cores
+        const primaryColor = '#0984e3';
+        const grayColor = '#636e72';
+        const lightGray = '#f5f6fa';
+        
+        // Cabeçalho
+        doc.fontSize(18)
+           .fillColor(primaryColor)
+           .text(`Orçamento ${this.formatOrcamentoCodigo(orcamento.codigo)}`, 30, 30);
+           
+        doc.fontSize(10)
+           .fillColor(grayColor)
+           .text(`Data: ${this.formatDate(orcamento.dt_orcamento)}`, 30, 55);
+
+        // Linha separadora
+        doc.moveTo(30, 75)
+           .lineTo(565, 75)
+           .strokeColor(primaryColor)
+           .lineWidth(2)
+           .stroke();
+
+        let yPosition = 95;
+
+        // Informações do Cliente
+        doc.fontSize(11)
+           .fillColor(primaryColor)
+           .text('DADOS DO CLIENTE', 30, yPosition);
+           
+        yPosition += 20;
+        
+        if (cliente) {
+          doc.fontSize(9)
+             .fillColor('black')
+             .text(`Nome: ${cliente.nome || '-'}`, 30, yPosition);
+          yPosition += 12;
+          
+          doc.text(`CNPJ/CPF: ${cliente.cnpj || cliente.cpf || '-'}`, 30, yPosition);
+          yPosition += 12;
+          
+          doc.text(`Endereço: ${cliente.endereco || '-'}, ${cliente.numero || ''} - ${cliente.bairro || '-'}`, 30, yPosition);
+          yPosition += 12;
+          
+          doc.text(`Cidade: ${cliente.cidade || '-'} - ${cliente.uf || '-'} - CEP: ${cliente.cep || '-'}`, 30, yPosition);
+          yPosition += 12;
+          
+          if (cliente.telefone) {
+            doc.text(`Telefone: ${cliente.telefone}`, 30, yPosition);
+            yPosition += 12;
+          }
+        }
+
+        yPosition += 10;
+
+        // Informações do Vendedor
+        if (vendedor) {
+          doc.fontSize(11)
+             .fillColor(primaryColor)
+             .text('VENDEDOR', 30, yPosition);
+             
+          yPosition += 20;
+          
+          doc.fontSize(9)
+             .fillColor('black')
+             .text(`Nome: ${vendedor.nome || '-'}`, 30, yPosition);
+          yPosition += 12;
+          
+          if (vendedor.telefone) {
+            doc.text(`Telefone: ${vendedor.telefone}`, 30, yPosition);
+            yPosition += 12;
+          }
+        }
+
+        yPosition += 15;
+
+        // Tabela de Itens
+        doc.fontSize(11)
+           .fillColor(primaryColor)
+           .text('ITENS DO ORÇAMENTO', 30, yPosition);
+           
+        yPosition += 20;
+
+        // Cabeçalho da tabela
+        const tableTop = yPosition;
+        const colWidths = {
+          codigo: 50,
+          descricao: 180,
+          qtde: 40,
+          un: 30,
+          vlUnit: 60,
+          desc: 40,
+          ipi: 50,
+          st: 50,
+          vlLiq: 60,
+          total: 65
+        };
+
+        let xPosition = 30;
+        
+        // Fundo do cabeçalho
+        doc.rect(30, yPosition - 5, 535, 20)
+           .fillColor(primaryColor)
+           .fill();
+
+        doc.fontSize(8)
+           .fillColor('white');
+
+        doc.text('Cód', xPosition, yPosition);
+        xPosition += colWidths.codigo;
+        
+        doc.text('Descrição', xPosition, yPosition);
+        xPosition += colWidths.descricao;
+        
+        doc.text('Qtde', xPosition, yPosition);
+        xPosition += colWidths.qtde;
+        
+        doc.text('Un', xPosition, yPosition);
+        xPosition += colWidths.un;
+        
+        doc.text('Vl. Unit', xPosition, yPosition);
+        xPosition += colWidths.vlUnit;
+        
+        doc.text('Desc', xPosition, yPosition);
+        xPosition += colWidths.desc;
+        
+        doc.text('IPI', xPosition, yPosition);
+        xPosition += colWidths.ipi;
+        
+        doc.text('ST', xPosition, yPosition);
+        xPosition += colWidths.st;
+        
+        doc.text('Vl. Líq', xPosition, yPosition);
+        xPosition += colWidths.vlLiq;
+        
+        doc.text('Total', xPosition, yPosition);
+
+        yPosition += 25;
+
+        // Itens
+        let totalGeral = 0;
+        let totalIPI = 0;
+        let totalST = 0;
+        let totalDesconto = 0;
+
+        if (orcamento.itens && orcamento.itens.length > 0) {
+          orcamento.itens.forEach((item, index) => {
+            // Verificar se precisa de nova página
+            if (yPosition > 700) {
+              doc.addPage();
+              yPosition = 50;
+            }
+
+            // Fundo alternado
+            if (index % 2 === 0) {
+              doc.rect(30, yPosition - 3, 535, 15)
+                 .fillColor(lightGray)
+                 .fill();
+            }
+
+            xPosition = 30;
+            
+            doc.fontSize(8)
+               .fillColor('black');
+
+            // Código
+            doc.text(item.codigo || '-', xPosition, yPosition);
+            xPosition += colWidths.codigo;
+            
+            // Descrição (truncar se muito longa)
+            const descricao = (item.descricao || '').substring(0, 25);
+            doc.text(descricao, xPosition, yPosition);
+            xPosition += colWidths.descricao;
+            
+            // Quantidade
+            doc.text(this.formatNumber(item.quantidade), xPosition, yPosition, { align: 'right', width: colWidths.qtde - 5 });
+            xPosition += colWidths.qtde;
+            
+            // Unidade
+            doc.text(item.unidade || 'UN', xPosition, yPosition, { align: 'center', width: colWidths.un - 5 });
+            xPosition += colWidths.un;
+            
+            // Valor Unitário
+            doc.text(this.formatCurrency(item.valor_unitario), xPosition, yPosition, { align: 'right', width: colWidths.vlUnit - 5 });
+            xPosition += colWidths.vlUnit;
+            
+            // Desconto
+            const desconto = item.desconto || 0;
+            doc.text(this.formatCurrency(desconto), xPosition, yPosition, { align: 'right', width: colWidths.desc - 5 });
+            xPosition += colWidths.desc;
+            
+            // IPI
+            const ipi = item.valor_ipi || 0;
+            doc.text(this.formatCurrency(ipi), xPosition, yPosition, { align: 'right', width: colWidths.ipi - 5 });
+            xPosition += colWidths.ipi;
+            
+            // ST
+            const st = item.valor_icms_st || 0;
+            doc.text(this.formatCurrency(st), xPosition, yPosition, { align: 'right', width: colWidths.st - 5 });
+            xPosition += colWidths.st;
+            
+            // Valor Líquido
+            const valorLiquido = (item.valor_unitario * item.quantidade) - desconto;
+            doc.text(this.formatCurrency(valorLiquido), xPosition, yPosition, { align: 'right', width: colWidths.vlLiq - 5 });
+            xPosition += colWidths.vlLiq;
+            
+            // Total
+            const total = valorLiquido + ipi + st;
+            doc.text(this.formatCurrency(total), xPosition, yPosition, { align: 'right', width: colWidths.total - 5 });
+
+            // Acumular totais
+            totalGeral += total;
+            totalIPI += ipi;
+            totalST += st;
+            totalDesconto += desconto;
+
+            yPosition += 18;
+          });
+        }
+
+        yPosition += 10;
+
+        // Totais
+        doc.fontSize(10)
+           .fillColor(primaryColor)
+           .text('TOTAIS', 30, yPosition);
+           
+        yPosition += 20;
+
+        // Fundo dos totais
+        doc.rect(30, yPosition - 5, 535, 80)
+           .fillColor(lightGray)
+           .fill();
+
+        doc.fontSize(9)
+           .fillColor('black');
+
+        doc.text(`Subtotal: ${this.formatCurrency(totalGeral - totalIPI - totalST)}`, 40, yPosition);
+        yPosition += 15;
+        
+        doc.text(`Desconto: ${this.formatCurrency(totalDesconto)}`, 40, yPosition);
+        yPosition += 15;
+        
+        doc.text(`IPI: ${this.formatCurrency(totalIPI)}`, 40, yPosition);
+        yPosition += 15;
+        
+        doc.text(`ICMS-ST: ${this.formatCurrency(totalST)}`, 40, yPosition);
+        yPosition += 15;
+
+        // Total Geral
+        doc.fontSize(12)
+           .fillColor(primaryColor)
+           .text(`TOTAL GERAL: ${this.formatCurrency(totalGeral)}`, 40, yPosition);
+
+        yPosition += 30;
+
+        // Informações de Pagamento
+        if (pagamento) {
+          doc.fontSize(11)
+             .fillColor(primaryColor)
+             .text('CONDIÇÕES DE PAGAMENTO', 30, yPosition);
+             
+          yPosition += 20;
+          
+          doc.fontSize(9)
+             .fillColor('black')
+             .text(`Forma: ${pagamento.forma || '-'}`, 30, yPosition);
+          yPosition += 12;
+          
+          if (pagamento.parcelas) {
+            doc.text(`Parcelas: ${pagamento.parcelas}`, 30, yPosition);
+            yPosition += 12;
+          }
+        }
+
+        // Observações
+        if (orcamento.observacoes) {
+          yPosition += 15;
+          
+          doc.fontSize(11)
+             .fillColor(primaryColor)
+             .text('OBSERVAÇÕES', 30, yPosition);
+             
+          yPosition += 20;
+          
+          doc.fontSize(9)
+             .fillColor('black')
+             .text(orcamento.observacoes, 30, yPosition, { width: 535 });
+        }
+
+        // Rodapé
+        doc.fontSize(8)
+           .fillColor(grayColor)
+           .text('Este orçamento tem validade de 30 dias', 30, 750, { align: 'center', width: 535 });
+
+        // Número da página
+        const pages = doc.bufferedPageRange();
+        for (let i = 0; i < pages.count; i++) {
+          doc.switchToPage(i);
+          doc.fontSize(8)
+             .fillColor(grayColor)
+             .text(`Página ${i + 1} de ${pages.count}`, 500, 750);
+        }
+
+        doc.end();
+      } catch (error) {
+        console.error('Erro ao gerar PDF:', error);
+        reject(error);
+      }
+    });
   }
-});
 
-// Função para formatar código do orçamento (copiada do utils)
-const formatOrcamentoCodigo = (codigo) => {
-  if (!codigo) return '';
-  return String(codigo).padStart(6, '0');
-};
+  // Métodos auxiliares
+  static formatOrcamentoCodigo(codigo) {
+    if (!codigo) return '';
+    return String(codigo).padStart(6, '0');
+  }
 
-const OrcamentoPDF = ({ dados }) => {
-  const { orcamento, cliente, vendedor, pagamento } = dados;
-
-  // Formatação de valores e datas
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value || 0);
-  };
-
-  const formatDate = (dateStr) => {
+  static formatDate(dateStr) {
     if (!dateStr) return '-';
     try {
       return new Date(dateStr).toLocaleDateString('pt-BR');
     } catch (e) {
       return dateStr;
     }
-  };
+  }
 
-  return React.createElement(Document, null,
-    React.createElement(Page, { size: "A4", style: styles.page },
-      // Cabeçalho
-      React.createElement(View, { style: styles.header },
-        React.createElement(View, { style: styles.headerLeft },
-          React.createElement(Text, { style: styles.title }, `Orçamento ${formatOrcamentoCodigo(orcamento.codigo)}`),
-          React.createElement(Text, { style: styles.subtitle }, `Data: ${formatDate(orcamento.dt_orcamento)}`)
-        )
-      ),
+  static formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value || 0);
+  }
 
-      // Grid de Informações
-      React.createElement(View, { style: styles.infoGrid },
-        // Coluna Cliente
-        React.createElement(View, { style: styles.infoColumn },
-          React.createElement(Text, { style: styles.columnTitle }, 'Dados do Cliente'),
-          React.createElement(View, { style: styles.infoRow },
-            React.createElement(Text, { style: styles.infoLabel }, 'Nome:'),
-            React.createElement(Text, { style: styles.infoValue }, cliente.nome || '')
-          ),
-          React.createElement(View, { style: styles.infoRow },
-            React.createElement(Text, { style: styles.infoLabel }, cliente.pessoa === 'J' ? 'CNPJ:' : 'CPF:'),
-            React.createElement(Text, { style: styles.infoValue }, cliente.documento || '')
-          ),
-          React.createElement(View, { style: styles.infoRow },
-            React.createElement(Text, { style: styles.infoLabel }, cliente.pessoa === 'J' ? 'IE:' : 'RG:'),
-            React.createElement(Text, { style: styles.infoValue }, cliente.inscricao || '')
-          ),
-          React.createElement(View, { style: styles.infoRow },
-            React.createElement(Text, { style: styles.infoLabel }, 'Endereco:'),
-            React.createElement(Text, { style: styles.infoValue }, 
-              `${cliente.endereco?.logradouro || ''}, ${cliente.endereco?.numero || ''}${cliente.endereco?.complemento ? ` - ${cliente.endereco.complemento}` : ''}`
-            )
-          ),
-          React.createElement(View, { style: styles.infoRow },
-            React.createElement(Text, { style: styles.infoLabel }, 'Bairro:'),
-            React.createElement(Text, { style: styles.infoValue }, cliente.endereco?.bairro || '')
-          ),
-          React.createElement(View, { style: styles.infoRow },
-            React.createElement(Text, { style: styles.infoLabel }, 'Cidade/UF:'),
-            React.createElement(Text, { style: styles.infoValue }, `${cliente.endereco?.cidade || ''}/${cliente.endereco?.uf || ''}`)
-          ),
-          React.createElement(View, { style: styles.infoRow },
-            React.createElement(Text, { style: styles.infoLabel }, 'CEP:'),
-            React.createElement(Text, { style: styles.infoValue }, cliente.endereco?.cep || '')
-          )
-        ),
+  static formatNumber(value) {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value || 0);
+  }
+}
 
-        // Coluna Vendedor e Pagamento
-        React.createElement(View, { style: styles.infoColumn },
-          React.createElement(Text, { style: styles.columnTitle }, 'Dados do Vendedor'),
-          React.createElement(View, { style: styles.infoRow },
-            React.createElement(Text, { style: styles.infoLabel }, 'Nome:'),
-            React.createElement(Text, { style: styles.infoValue }, vendedor.nome || '')
-          ),
-          vendedor.email && React.createElement(View, { style: styles.infoRow },
-            React.createElement(Text, { style: styles.infoLabel }, 'Email:'),
-            React.createElement(Text, { style: styles.infoValue }, vendedor.email)
-          ),
-
-          React.createElement(View, { style: { marginTop: 15 } },
-            React.createElement(Text, { style: styles.columnTitle }, 'Condicoes de Pagamento'),
-            React.createElement(View, { style: styles.infoRow },
-              React.createElement(Text, { style: styles.infoLabel }, 'Forma:'),
-              React.createElement(Text, { style: styles.infoValue }, pagamento.forma || '')
-            ),
-            React.createElement(View, { style: styles.infoRow },
-              React.createElement(Text, { style: styles.infoLabel }, 'Condicao:'),
-              React.createElement(Text, { style: styles.infoValue }, pagamento.condicao || '')
-            )
-          ),
-          
-          orcamento.nome_transportadora && React.createElement(View, { style: { marginTop: 15 } },
-            React.createElement(Text, { style: styles.columnTitle }, 'Transportadora'),
-            React.createElement(View, { style: styles.infoRow },
-              React.createElement(Text, { style: styles.infoLabel }, 'Nome:'),
-              React.createElement(Text, { style: styles.infoValue }, orcamento.nome_transportadora)
-            ),
-            orcamento.cod_transportadora && React.createElement(View, { style: styles.infoRow },
-              React.createElement(Text, { style: styles.infoLabel }, 'Codigo:'),
-              React.createElement(Text, { style: styles.infoValue }, orcamento.cod_transportadora)
-            )
-          )
-        )
-      ),
-
-      // Tabela de Itens
-      React.createElement(View, { style: styles.table },
-        React.createElement(View, { style: styles.tableHeader },
-          React.createElement(Text, { style: styles.colCodigo }, 'Codigo'),
-          React.createElement(Text, { style: styles.colDescricao }, 'Descricao'),
-          React.createElement(Text, { style: styles.colQtde }, 'Qtde'),
-          React.createElement(Text, { style: styles.colUn }, 'Un'),
-          React.createElement(Text, { style: styles.colVlUnit }, 'Vl. Unit.'),
-          React.createElement(Text, { style: styles.colDesc }, 'Desc.%'),
-          React.createElement(Text, { style: styles.colIpi }, 'IPI'),
-          React.createElement(Text, { style: styles.colSt }, 'ST'),
-          React.createElement(Text, { style: styles.colVlLiq }, 'Vl. Liq.'),
-          React.createElement(Text, { style: styles.colTotal }, 'Total')
-        ),
-
-        ...(orcamento.itens || []).map((item, index) =>
-          React.createElement(View, { 
-            key: index, 
-            style: [styles.tableRow, index % 2 === 1 && styles.tableRowEven]
-          },
-            React.createElement(Text, { style: styles.colCodigo }, item.produto_codigo || ''),
-            React.createElement(Text, { style: styles.colDescricao }, item.produto_descricao || ''),
-            React.createElement(Text, { style: styles.colQtde }, item.quantidade || ''),
-            React.createElement(Text, { style: styles.colUn }, 
-              `${item.unidade || ''}${item.isUnidade2 ? '*' : ''}`
-            ),
-            React.createElement(Text, { style: styles.colVlUnit }, formatCurrency(item.valor_unitario)),
-            React.createElement(Text, { style: styles.colDesc }, 
-              item.desconto > 0 ? `${item.desconto}%` : '-'
-            ),
-            React.createElement(Text, { style: styles.colIpi }, 
-              parseFloat(item.valor_ipi) > 0 ? formatCurrency(item.valor_ipi) : '-'
-            ),
-            React.createElement(Text, { style: styles.colSt }, 
-              parseFloat(item.valor_icms_st) > 0 ? formatCurrency(item.valor_icms_st) : '-'
-            ),
-            React.createElement(Text, { style: styles.colVlLiq }, formatCurrency(item.valor_com_desconto)),
-            React.createElement(Text, { style: styles.colTotal }, formatCurrency(item.valor_total))
-          )
-        )
-      ),
-
-      // Totais
-      React.createElement(View, { style: styles.totais },
-        React.createElement(View, { style: styles.totalRow },
-          React.createElement(Text, { style: styles.totalLabel }, 'Valor dos Produtos:'),
-          React.createElement(Text, { style: styles.totalValue }, formatCurrency(orcamento.totais?.valor_produtos))
-        ),
-        React.createElement(View, { style: styles.totalRow },
-          React.createElement(Text, { style: styles.totalLabel }, 'Descontos:'),
-          React.createElement(Text, { style: styles.totalValue }, formatCurrency(orcamento.totais?.valor_descontos))
-        ),
-        React.createElement(View, { style: styles.totalRow },
-          React.createElement(Text, { style: styles.totalLabel }, 'Valor Liquido:'),
-          React.createElement(Text, { style: styles.totalValue }, formatCurrency(orcamento.totais?.valor_liquido))
-        ),
-        React.createElement(View, { style: styles.totalRow },
-          React.createElement(Text, { style: styles.totalLabel }, 'Total IPI:'),
-          React.createElement(Text, { style: styles.totalValue }, formatCurrency(orcamento.totais?.valor_ipi))
-        ),
-        React.createElement(View, { style: styles.totalRow },
-          React.createElement(Text, { style: styles.totalLabel }, 'Total ICMS-ST:'),
-          React.createElement(Text, { style: styles.totalValue }, formatCurrency(orcamento.totais?.valor_st))
-        ),
-        React.createElement(View, { style: [styles.totalRow, styles.grandTotal] },
-          React.createElement(Text, { style: styles.grandTotalLabel }, 'Valor Total:'),
-          React.createElement(Text, { style: styles.grandTotalValue }, 
-            formatCurrency(orcamento.totais?.valor_total)
-          )
-        )
-      ),
-
-      // Observações
-      orcamento.observacoes && React.createElement(View, { style: styles.observacoes },
-        React.createElement(Text, { style: styles.observacoesTitle }, 'Observacoes:'),
-        React.createElement(Text, null, orcamento.observacoes)
-      ),
-
-      // Rodapé com número da página
-      React.createElement(Text, { 
-        style: styles.pageNumber, 
-        render: ({ pageNumber, totalPages }) => `Pagina ${pageNumber} de ${totalPages}`,
-        fixed: true 
-      }),
-
-      // Rodapé com informações adicionais
-      React.createElement(Text, { style: styles.footer }, 
-        `Documento gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`
-        + (orcamento.itens?.some(item => item.isUnidade2) ? '\n* Indica unidade alternativa (Unidade2)' : '')
-      )
-    )
-  );
-};
-
-module.exports = { OrcamentoPDF, pdf }; 
+module.exports = OrcamentoPDF; 
